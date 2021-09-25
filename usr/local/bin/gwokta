@@ -1,0 +1,336 @@
+#!/usr/bin/env python3
+# Tested and verified on Python v3.8.5 for Windows
+
+# Detect Python 2 run
+import sys
+if not(sys.version_info[0] == 3 and sys.version_info[1] >= 8):
+    print("This script requires Python version 3.8 or above")
+    sys.exit(1)
+
+'''
+dxc-aws-fedsso-okta.py v1.0
+This script is used to issue temporary access keys for access to CLI.
+This script uses AWS SAML federation which utilizes AWS Security Token Service (STS)
+to issue temporary access keys for access to CLI.
+'''
+
+import sys
+from os import environ,system
+from os.path import expanduser
+import getpass
+from dateutil import tz
+import xml.etree.ElementTree as ET
+import base64
+import argparse
+import configparser
+import re
+from codecs import decode
+import requests
+import json
+from bs4 import BeautifulSoup as bs
+import boto3
+from botocore.exceptions import ClientError
+
+
+sslverification = True
+sessionDuration = 14400
+sessionDurationIamMgr = 7200
+
+parser = argparse.ArgumentParser(
+    usage='%(prog)s [options] [Search String] [-e/--env "DEV"] [-u/--username "shortname@dxcmgmt.com"]',
+    description='DXC Cloud IAM Federated SSO CLI Login to AWS resources'
+)
+parser.add_argument('-u','--username',
+    help='Specify the user to login with. Note, this can also be set by environment variable: DXC_FEDSSO_USERNAME',
+    metavar='shortname@dxcmgmt.com',
+    dest='username'
+)
+parser.add_argument('-e','--env',
+    help='Specify if you wish to connect to CLMGMTDEV environment.',
+    metavar='DEV',
+    dest='env'
+)
+parser.add_argument('searchString', metavar='Search String', type=str,
+    nargs='?', default='',
+    help='Filter returned CloudIAM Arns by string (if desired)'
+)
+args = parser.parse_args()
+
+oktaDomain = "https://login.dxcmgmt.com"
+awsappaudience = "/home/amazon_aws/0oajuhw2r0BjLNiSU5d6/272"
+
+if(args.env and args.env.upper() == "DEV"):
+    oktaDomain = "https://login.dxcmgmt.net"
+    awsappaudience = "/home/amazon_aws/0oahy834n8FlHIXWM1d6/272"
+
+
+class SAMLAssertionOkta():
+
+    def __init__(self, username="", password="", verify_ssl=True):
+        
+        self.username = username
+        self.password = password
+        
+        if not(self.username and self.password):
+            self.getCred()
+
+        self.verify_ssl = verify_ssl
+        self.session = None
+        self.session_token = ""
+        self.session_id = ""
+        self.samlAssertion = None
+
+    def getCred(self):
+        # Some recent git-bash versions cause issue with getpass, causing a complete freeze
+        # This detects and exists and offers a work around in running should this occur
+        if not sys.stdin.isatty():
+            print("Terminal does not support secure capture. If running in windows-based emulator (git-bash)"
+                + "please execute with \"winpty python3 dxc-aws-fedsso.py\"")
+            sys.exit(1)
+
+        # Checks for username in environment variable
+        if args.username is not None:
+            print('\nUsing Optional Argument --username "{}" as CLMGMT Username.\n'.format(args.username))
+            self.username = args.username
+        elif 'DXC_FEDSSO_USERNAME' in environ:
+            self.username = environ['DXC_FEDSSO_USERNAME']
+            print('\nUsing Environment Variable DXC_FEDSSO_USERNAME="{}" as CLMGMT Username.\n'.format(self.username))
+        else:
+            self.username = ''
+            if(args.env and args.env.upper() == "DEV"):
+                while self.username == '':
+                    self.username = input('\nEnter CLMGMTDEV Username in format <shortname>@dxcmgmt.net or CLMGMTDEV\\<shortname>: ')
+            else:
+                while self.username == '':
+                    self.username = input('\nEnter CLMGMT Username in format <shortname>@dxcmgmt.com or CLMGMT\\<shortname>: ')
+
+        # Catch if user is not providing username in correct format
+        if ( not re.match('^.+@.+$', self.username) ) and (not re.match('^.+\\\\.+$', self.username) ):
+            if(args.env and args.env.upper() == "DEV"):
+                print("ERROR: Please provide username in the format of CLMGMTDEV\\SHORTNAME or SHORTNAME@dxcmgmt.net", file=sys.stderr)
+            else:
+                print("ERROR: Please provide username in the format of CLMGMT\\SHORTNAME or SHORTNAME@dxcmgmt.com", file=sys.stderr)
+            sys.exit(0)
+
+        self.password = getpass.getpass()
+
+        print('\nVerifying credentials...\n')
+
+    def getSAMLassertion(self):
+        urlauth = "{0}/api/v1/authn".format(oktaDomain)
+        authBody = {
+            "username": self.username,
+            "password": self.password,
+            #"audience": "0oahy834n8FlHIXWM1d6",
+            "options": {
+                "multiOptionalFactorEnroll": False,
+                "warnBeforePasswordExpired": True
+            }  
+        }
+        
+        self.session = requests.Session()
+        respAuth = self.session.post(urlauth, json = authBody)
+        self.cookies = respAuth.cookies
+        if (respAuth.status_code == 200):
+            try:
+                #print(respAuth.json())
+                print("\nFor security reasons, you will receive two consecutive MFA notifications in Okta verify app.\nPlease approve both requests.\n")
+                stateToken = respAuth.json()["stateToken"]
+                factors  = respAuth.json()["_embedded"]["factors"]
+                factorid = factors[0]["id"]
+                factorapiBody = {"stateToken": stateToken}
+                urlfactorapi = "{0}/api/v1/authn/factors/{1}/verify".format(oktaDomain, factorid)
+                respFactorjson = self.getMFA(urlfactorapi, factorapiBody)
+                #print(respFactorjson)
+                if("sessionToken" in respFactorjson):
+                    self.session_token = respFactorjson["sessionToken"]
+                    self.session_id = self.get_session(self.session_token)
+                    #print(self.session_id)
+                else:
+                    print("Error:Couldn't generate session token")
+                    raise
+
+                if(not self.session_id):
+                    print("Error in generating session id")
+                    raise
+                
+                self.session.cookies['sid'] = self.session_id
+                
+                awsredirectUrl = "{0}{1}".format(oktaDomain, awsappaudience)
+                redirectResp = self.session.get(awsredirectUrl)
+
+                redirectRespSoup = bs(redirectResp.text, "html.parser")
+                if hasattr(redirectRespSoup.title, 'string') and re.match(".* - Extra Verification$", redirectRespSoup.title.string):
+                    oktaDataJS = decode(re.search(r"var oktaData = (.*);", redirectResp.text).group(1), "unicode-escape")
+                else:
+                    print("Error: No Extra Verification")
+                    raise
+                
+                oktaDataJson = json.loads(oktaDataJS)
+                evHref = oktaDataJson["requestContext"]["factors"][0]["links"]["verify"]["href"]
+                evStateToken = oktaDataJson["signIn"]["stateToken"]
+                self.session.cookies['oktaStateToken'] = evStateToken
+                evfactorapiBody = {"stateToken": evStateToken}
+                evRespJson = self.getMFA(evHref, evfactorapiBody)
+                #print(evRespJson)
+                awsFedlink = evRespJson["_links"]["next"]["href"]
+                #print(awsFedlink)
+                awsReq = self.session.get(awsFedlink)
+                #print(awsReq.status_code)
+                samlsoup = bs(awsReq.text, "html.parser")
+                #print(samlsoup)
+                if(samlsoup.find('input', {'name': 'SAMLResponse'})):
+                    self.samlAssertion = samlsoup.find('input', {'name': 'SAMLResponse'}).get('value')
+                
+                if (self.samlAssertion is None):
+                    print('>>> ERROR: Invalid Username, Password or Token.')
+                    sys.exit(0)
+    
+            except:
+                print("Unexpected error:", sys.exc_info()[0])
+        else:
+            print("Error: " + str(respAuth.status_code) + ":" + respAuth.reason)
+        pass
+
+    def getMFA(self, mfaApi, mfaBody):
+        respMfaApi = requests.post(mfaApi, json=mfaBody)
+        if(respMfaApi.status_code == 200):
+            while("factorResult" in respMfaApi.json() and respMfaApi.json()["factorResult"] == "WAITING"):
+                respMfaApi = requests.post(mfaApi, json=mfaBody)
+                #print(respfactorapi.status_code)
+                #print(respfactorapi.json())
+            return respMfaApi.json()
+        else:
+            print("Error in MFA:" + str(respMfaApi.status_code) + ":" + respMfaApi.reason)
+            raise
+        pass
+
+    def get_session(self, session_token):
+        """ Gets a session cookie from a session token """
+        data = {"sessionToken": session_token}
+        resp = requests.Session().post(
+            oktaDomain + '/api/v1/sessions', json=data).json()
+        return resp['id']
+
+
+def extractAWSRoles(samlAssertion):
+    awsroles = []
+    root = ET.fromstring(base64.b64decode(samlAssertion))
+    for saml2attribute in root.iter('{urn:oasis:names:tc:SAML:2.0:assertion}Attribute'):
+        if (saml2attribute.get('Name') == 'https://aws.amazon.com/SAML/Attributes/Role'):
+            for saml2attributevalue in saml2attribute.iter('{urn:oasis:names:tc:SAML:2.0:assertion}AttributeValue'):
+                if ( args.searchString != "" and args.searchString in saml2attributevalue.text ):
+                    awsroles.append(saml2attributevalue.text)
+                elif args.searchString == "":
+                    awsroles.append(saml2attributevalue.text)
+
+    # Note the format of the attribute value should be role_arn,principal_arn but lots of blogs list it as principal_arn,role_arn
+    # so let's reverse them if needed
+    for awsrole in awsroles:
+        chunks = awsrole.split(',')
+        if 'saml-provider' in chunks[0]:
+            newawsrole = chunks[1] + ',' + chunks[0]
+            index = awsroles.index(awsrole)
+            awsroles.insert(index, newawsrole)
+            awsroles.remove(awsrole)
+    awsroles.sort()
+    return awsroles
+
+def getArnSelection(awsroles):
+    print("")
+    if len(awsroles) > 1:
+        i = 0
+        print("Please choose the role you would like to assume:")
+        for awsrole in awsroles:
+            print('[', i, ']: ', awsrole.split(',')[0])
+            i += 1
+        print("Selection: ")
+        try:
+            selectedroleindex = input()
+        except:
+            sys.exit(0)
+
+        # Basic sanity check of input
+        if int(selectedroleindex) > (len(awsroles) - 1):
+            print('You selected an invalid role index, please try again')
+            sys.exit(0)
+
+        role_arn = awsroles[int(selectedroleindex)].split(',')[0]
+        principal_arn = awsroles[int(selectedroleindex)].split(',')[1]
+    else:
+        role_arn = awsroles[0].split(',')[0]
+        principal_arn = awsroles[0].split(',')[1]
+        print("  Selected role {:s}".format(role_arn) )
+
+    return role_arn, principal_arn
+
+def updateAWSProfiles(stsToken, role_arn):
+    # print(stsToken)
+    awsCredFile = '/.aws/credentials'
+    # Read in the existing aws credentials file
+    awsCreds = configparser.RawConfigParser(comment_prefixes='/', allow_no_value=True)
+    awsCreds.read(expanduser("~") + awsCredFile)
+    print("\nFound AWS profiles: " + json.dumps(awsCreds.sections()))
+    profileName = ''
+    while profileName == '':
+        print("Enter profile name to add/update: ")
+        profileName = input()
+
+    if not awsCreds.has_section(profileName):
+        awsCreds.add_section(profileName)
+    awsCreds.set(profileName, '#Role_ARN', role_arn)
+    awsCreds.set(profileName, 'aws_access_key_id', stsToken["Credentials"]["AccessKeyId"])
+    awsCreds.set(profileName, 'aws_secret_access_key', stsToken["Credentials"]["SecretAccessKey"])
+    awsCreds.set(profileName, 'aws_session_token', stsToken["Credentials"]["SessionToken"])
+    awsCreds.set(profileName, 'aws_session_token_expiration', (stsToken["Credentials"]["Expiration"]).astimezone(tz.tzlocal()).strftime('%Y-%m-%d %H:%M:%S (UTC%z)'))
+    tz.tzlocal()
+
+    # Write the updated awsCreds file
+    with open((expanduser("~") + awsCredFile), 'w+') as configfile:
+        awsCreds.write(configfile)
+
+
+if __name__ == "__main__":
+
+    print('\nDXC Federated SSO Login for AWS CLI\n')
+
+    samlAssertionOkta = SAMLAssertionOkta()
+    samlAssertionOkta.getSAMLassertion()
+
+    if (samlAssertionOkta.samlAssertion is None):
+        print('>>> ERROR: Invalid Username, Password or Token.')
+        sys.exit(0)
+
+    awsroles = extractAWSRoles(samlAssertionOkta.samlAssertion)
+    # Check to ensure there are roles before continueing
+    if len(awsroles) == 0:
+        if args.searchString == '':
+            sys.exit("No roles available for your login")
+        else:
+            sys.exit("No roles available that match the search string: {:s}".format(args.searchString))
+
+    #print(awsroles)
+    role_arn, principal_arn = getArnSelection(awsroles)
+    calcSessionDuration = sessionDuration
+    stsclient = boto3.client('sts')
+    # 3600 seconds is the minimum allowed assumeRole duration
+    # Start at max and try until we hit this min
+    while calcSessionDuration >= 3600:
+        try:
+            stsToken = stsclient.assume_role_with_saml(RoleArn=role_arn, PrincipalArn=principal_arn, SAMLAssertion=samlAssertionOkta.samlAssertion, DurationSeconds=calcSessionDuration)
+            break
+        except ClientError as err:
+            if "DurationSeconds exceeds" in err.response['Error']['Message']:
+                calcSessionDuration = int(calcSessionDuration / 2)
+                print("- Reducing session duration to {}".format(calcSessionDuration))
+            else:
+                print( err.response['Error']['Message'] )
+                sys.exit(0)
+        except Exception as err:
+            print(err)
+            sys.exit(0)
+
+    updateAWSProfiles(stsToken, role_arn)
+
+    print('\nUpdated credentials file, invoke the AWS CLI with the --profile & --region options.\n')
+
