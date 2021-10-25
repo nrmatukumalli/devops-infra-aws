@@ -4,7 +4,7 @@ ENV GOVERSION 1.17.1
 ENV GOROOT /opt/go
 ENV GOPATH /root/.go
 
-ARG terraform_version=1.0.7
+ARG tf_version=1.0.7
 ARG tfsec_version=v0.58.9
 ARG tflint_version=v0.32.1
 ARG tfdoc_version=v0.15.0
@@ -33,8 +33,8 @@ RUN amazon-linux-extras install golang1.11
 
 RUN pip3.8 install --upgrade pip
 
-RUN pip install setuptools wheel setuptools-rust
-RUN pip install cryptography \
+RUN pip3 install setuptools wheel setuptools-rust
+RUN pip3 install cryptography \
     PyYAML \
     boto3 \
     yq \
@@ -47,11 +47,14 @@ RUN pip install cryptography \
     diagrams \
     pytest \
     tftest \
-    s3cmd
+    s3cmd \
+    checkov \
+    airiam \
+    blastradius 
 
 # Install Terraform
-RUN cd /usr/local/bin && wget https://releases.hashicorp.com/terraform/${terraform_version}/terraform_${terraform_version}_linux_amd64.zip \
-    && unzip terraform_${terraform_version}_linux_amd64.zip  && rm terraform_${terraform_version}_linux_amd64.zip
+RUN cd /usr/local/bin && wget https://releases.hashicorp.com/terraform/${tf_version}/terraform_${tf_version}_linux_amd64.zip \
+    && unzip terraform_${tf_version}_linux_amd64.zip  && rm terraform_${tf_version}_linux_amd64.zip
 
 # AWS CLI Version 2
 RUN cd /root && curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
