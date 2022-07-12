@@ -4,10 +4,10 @@ ENV GOVERSION 1.17.1
 ENV GOROOT /opt/go
 ENV GOPATH /root/.go
 
-ARG tf_version=1.0.7
-ARG tfsec_version=v0.58.9
-ARG tflint_version=v0.32.1
-ARG tfdoc_version=v0.15.0
+ARG tf_version=1.2.4
+ARG tfsec_version=v1.26.3
+ARG tflint_version=v0.38.1
+ARG tfdoc_version=v0.16.0
 
 RUN yum update -y
 RUN yum install -y wget \
@@ -98,6 +98,10 @@ COPY etc/profile.d/profile.sh /etc/profile.d/profile.sh
 COPY usr/local/bin/gwokta /usr/local/bin/gwokta
 COPY usr/local/bin/gwsso /usr/local/bin/gwsso
 COPY usr/local/bin/aws-auth /usr/local/bin/aws-auth
+
+RUN chmod +x /usr/local/bin/gwokta
+RUN chmod +x /usr/local/bin/gwsso
+RUN chmod +x /usr/local/bin/aws-auth
 
 RUN rm /root/LICENSE /root/README.md
 
