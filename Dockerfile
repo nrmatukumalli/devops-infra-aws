@@ -1,40 +1,30 @@
-FROM public.ecr.aws/amazonlinux/amazonlinux:latest
+FROM ubuntu:latest
 
-ENV GOVERSION 1.17.1
-ENV GOROOT /opt/go
-ENV GOPATH /root/.go
+ARG TF_VERSION=1.0.11
+ARG TFSEC_VERSION=0.63.1
+ARG TFLINT_VERSION=0.33.2
+ARG TFDOC_VERSION=0.16.0
+ARG TG_VERSION=0.35.14
 
-ARG terraform_version=1.0.7
-ARG tfsec_version=v0.58.9
-ARG tflint_version=v0.32.1
-ARG tfdoc_version=v0.15.0
+RUN apt update \
+  && apt upgrade -y
 
-RUN yum update -y
-RUN yum install -y wget \
-    net-tools \
-    unzip \
-    gzip \
-    bash-completion \
-    figlet \
-    zsh \
-    tree \
-    nodejs \
-    jq \
-    graphviz \
-    bind-utils \
-    tar
-
-RUN amazon-linux-extras install epel
-RUN amazon-linux-extras install vim
-RUN amazon-linux-extras install python3.8
-RUN amazon-linux-extras install ansible2
-RUN amazon-linux-extras install ecs
-RUN amazon-linux-extras install golang1.11
-
-RUN pip3.8 install --upgrade pip
-
-RUN pip install setuptools wheel setuptools-rust
-RUN pip install cryptography \
+RUN apt install -y curl \
+  wget \
+  unzip \
+  zip \
+  gzip \
+  nodejs \
+  jq \
+  tar \
+  dnsutils \
+  python3.8 \
+  vim
+  
+RUN apt install -y python3-pip git golang-go zsh
+  
+RUN pip3 install setuptools wheel
+RUN	pip3 install cryptography \
     PyYAML \
     boto3 \
     yq \
@@ -47,57 +37,54 @@ RUN pip install cryptography \
     diagrams \
     pytest \
     tftest \
-    s3cmd
+    s3cmd \
+    checkov \
+    airiam \
+    blastradius \
+	terraform-compliance
 
-# Install Terraform
-RUN cd /usr/local/bin && wget https://releases.hashicorp.com/terraform/${terraform_version}/terraform_${terraform_version}_linux_amd64.zip \
-    && unzip terraform_${terraform_version}_linux_amd64.zip  && rm terraform_${terraform_version}_linux_amd64.zip
+RUN cd /usr/local/bin && wget https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip \
+    && unzip terraform_${TF_VERSION}_linux_amd64.zip  && rm terraform_${TF_VERSION}_linux_amd64.zip
+	
+RUN wget -O /usr/local/bin/terragrunt https://github.com/gruntwork-io/terragrunt/releases/download/v${TG_VERSION}/terragrunt_linux_amd64 \
+	&& chmod +x /usr/local/bin/terragrunt
 
-# AWS CLI Version 2
 RUN cd /root && curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
     && unzip awscliv2.zip && ./aws/install \
     && rm -rf /root/awscliv2.zip \
     && rm -rf /root/aws
 
-# Command Line Interface for ECS
 RUN curl -Lo /usr/local/bin/ecs-cli https://amazon-ecs-cli.s3.amazonaws.com/ecs-cli-linux-amd64-latest \
     && chmod +x /usr/local/bin/ecs-cli
 
-# Install AWS_IAM_AUTHENTICATOR
 RUN curl -Lo /usr/local/bin/aws-iam-authenticator https://amazon-eks.s3-us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/amd64/aws-iam-authenticator \
     && chmod +x /usr/local/bin/aws-iam-authenticator
-
-# Install Terrafrom Linter
-RUN cd /root && wget https://github.com/terraform-linters/tflint/releases/download/${tflint_version}/tflint_linux_amd64.zip \
+	
+RUN cd /root && wget https://github.com/terraform-linters/tflint/releases/download/v${TFLINT_VERSION}/tflint_linux_amd64.zip	 \
     && unzip /root/tflint_linux_amd64.zip \
     && mv /root/tflint /usr/local/bin/tflint \
     && rm /root/tflint_linux_amd64.zip
 
-# Terraform Security Scan	
-RUN curl -Lo /usr/local/bin/tfsec https://github.com/aquasecurity/tfsec/releases/download/${tfsec_version}/tfsec-linux-amd64 \
+RUN curl -Lo /usr/local/bin/tfsec https://github.com/aquasecurity/tfsec/releases/download/v${TFSEC_VERSION}/tfsec-linux-amd64 \
     && chmod +x /usr/local/bin/tfsec
 
-# Terraform-docs
-RUN cd /root && wget https://github.com/terraform-docs/terraform-docs/releases/download/${tfdoc_version}/terraform-docs-${tfdoc_version}-linux-amd64.tar.gz \
-    && tar -xvzf terraform-docs-${tfdoc_version}-linux-amd64.tar.gz  \
-    && mv terraform-docs /usr/local/bin/terraform-docs \
+RUN cd /root && wget -O /root/terraform-docs-${TFDOC_VERSION}-linux-amd64.tar.gz https://github.com/terraform-docs/terraform-docs/releases/download/v${TFDOC_VERSION}/terraform-docs-v${TFDOC_VERSION}-linux-amd64.tar.gz \
+    && tar -xvzf /root/terraform-docs-${TFDOC_VERSION}-linux-amd64.tar.gz  \
+    && mv /root/terraform-docs /usr/local/bin/terraform-docs \
     && chmod +x /usr/local/bin/terraform-docs \
-    && rm /root/terraform-docs-${tfdoc_version}-linux-amd64.tar.gz
+    && rm /root/terraform-docs-${TFDOC_VERSION}-linux-amd64.tar.gz
 
-RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1.2/zsh-in-docker.sh)" -- \
+    -t https://github.com/denysdovhan/spaceship-prompt \
+    -a 'SPACESHIP_PROMPT_ADD_NEWLINE="false"' \
+    -a 'SPACESHIP_PROMPT_SEPARATE_LINE="true"' \
+    -p git \
+    -p ssh-agent \
+    -p https://github.com/zsh-users/zsh-autosuggestions \
+    -p https://github.com/zsh-users/zsh-completions
+	
+RUN mkdir -p /root/.ssh
+RUN mkdir -p /opt/go
 
-# Install
-#   - eksctl
-#   - kubectl
-
-RUN mkdir -p /etc/profile.d/
-COPY etc/profile.d/profile.sh /etc/profile.d/profile.sh
-COPY usr/local/bin/gwokta /usr/local/bin/gwokta
-COPY usr/local/bin/gwsso /usr/local/bin/gwsso
-COPY usr/local/bin/aws-auth /usr/local/bin/aws-auth
-
-RUN rm /root/LICENSE /root/README.md
-
-WORKDIR /root
-
+WORKDIR /root/workspace
 CMD ["/bin/zsh"]
