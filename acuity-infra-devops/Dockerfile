@@ -28,7 +28,9 @@ RUN apt-get update -y; \
     openssl \
     python3 \
     python3-pip \
-    zip; \
+    zip \
+    golang-go \
+    zsh ;\
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*
 
