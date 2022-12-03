@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 FROM ubuntu:latest
 
 ARG TF_VERSION=1.0.11
@@ -25,6 +26,45 @@ RUN apt install -y python3-pip git golang-go zsh
   
 RUN pip3 install setuptools wheel
 RUN	pip3 install cryptography \
+=======
+FROM public.ecr.aws/amazonlinux/amazonlinux:latest
+
+ENV GOVERSION 1.17.1
+ENV GOROOT /opt/go
+ENV GOPATH /root/.go
+
+ARG tf_version=1.2.4
+ARG tfsec_version=v1.26.3
+ARG tflint_version=v0.38.1
+ARG tfdoc_version=v0.16.0
+
+RUN yum update -y
+RUN yum install -y wget \
+    net-tools \
+    unzip \
+    gzip \
+    bash-completion \
+    figlet \
+    zsh \
+    tree \
+    nodejs \
+    jq \
+    graphviz \
+    bind-utils \
+    tar
+
+RUN amazon-linux-extras install epel
+RUN amazon-linux-extras install vim
+RUN amazon-linux-extras install python3.8
+RUN amazon-linux-extras install ansible2
+RUN amazon-linux-extras install ecs
+RUN amazon-linux-extras install golang1.11
+
+RUN pip3.8 install --upgrade pip
+
+RUN pip3 install setuptools wheel setuptools-rust
+RUN pip3 install cryptography \
+>>>>>>> f693e86447d959e1cc18c784e820fe07be82c873
     PyYAML \
     boto3 \
     yq \
@@ -40,6 +80,7 @@ RUN	pip3 install cryptography \
     s3cmd \
     checkov \
     airiam \
+<<<<<<< HEAD
     blastradius \
 	terraform-compliance
 
@@ -48,6 +89,13 @@ RUN cd /usr/local/bin && wget https://releases.hashicorp.com/terraform/${TF_VERS
 	
 RUN wget -O /usr/local/bin/terragrunt https://github.com/gruntwork-io/terragrunt/releases/download/v${TG_VERSION}/terragrunt_linux_amd64 \
 	&& chmod +x /usr/local/bin/terragrunt
+=======
+    blastradius 
+
+# Install Terraform
+RUN cd /usr/local/bin && wget https://releases.hashicorp.com/terraform/${tf_version}/terraform_${tf_version}_linux_amd64.zip \
+    && unzip terraform_${tf_version}_linux_amd64.zip  && rm terraform_${tf_version}_linux_amd64.zip
+>>>>>>> f693e86447d959e1cc18c784e820fe07be82c873
 
 RUN cd /root && curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
     && unzip awscliv2.zip && ./aws/install \
@@ -72,6 +120,7 @@ RUN cd /root && wget -O /root/terraform-docs-${TFDOC_VERSION}-linux-amd64.tar.gz
     && tar -xvzf /root/terraform-docs-${TFDOC_VERSION}-linux-amd64.tar.gz  \
     && mv /root/terraform-docs /usr/local/bin/terraform-docs \
     && chmod +x /usr/local/bin/terraform-docs \
+<<<<<<< HEAD
     && rm /root/terraform-docs-${TFDOC_VERSION}-linux-amd64.tar.gz
 
 RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1.2/zsh-in-docker.sh)" -- \
@@ -87,4 +136,28 @@ RUN mkdir -p /root/.ssh
 RUN mkdir -p /opt/go
 
 WORKDIR /root/workspace
+=======
+    && rm /root/terraform-docs-${tfdoc_version}-linux-amd64.tar.gz
+
+RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+
+# Install
+#   - eksctl
+#   - kubectl
+
+RUN mkdir -p /etc/profile.d/
+COPY etc/profile.d/profile.sh /etc/profile.d/profile.sh
+COPY usr/local/bin/gwokta /usr/local/bin/gwokta
+COPY usr/local/bin/gwsso /usr/local/bin/gwsso
+COPY usr/local/bin/aws-auth /usr/local/bin/aws-auth
+
+RUN chmod +x /usr/local/bin/gwokta
+RUN chmod +x /usr/local/bin/gwsso
+RUN chmod +x /usr/local/bin/aws-auth
+
+RUN rm /root/LICENSE /root/README.md
+
+WORKDIR /root
+
+>>>>>>> f693e86447d959e1cc18c784e820fe07be82c873
 CMD ["/bin/zsh"]
