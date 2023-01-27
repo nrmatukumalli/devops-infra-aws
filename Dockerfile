@@ -75,7 +75,7 @@ RUN DOWNLOAD_URL="$( curl -LsS https://api.github.com/repos/mozilla/sops/release
     curl -LsS "${DOWNLOAD_URL}" -o /usr/local/bin/sops ;\
     chmod +x /usr/local/bin/sops
 
-RUN curl -LsS "https://awscli.amazonaws.com/awscli-exe-linux-${ARCHITECTURE}.zip" -o /tmp/awscli.zip ;\
+RUN curl -LsS "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscli.zip ;\
     mkdir -p /usr/local/awscli ;\
     unzip -q /tmp/awscli.zip -d /usr/local/awscli ;\
     /usr/local/awscli/aws/install
