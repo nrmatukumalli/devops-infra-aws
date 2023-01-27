@@ -36,11 +36,11 @@ RUN VERSION="$(curl -LsS https://releases.hashicorp.com/terraform/ | grep -Eo '/
     unzip ./terraform.zip ;\
     rm -f ./terraform.zip ;\
     chmod +x ./terraform ;\
-    mv ./terraform /usr/bin/terraform
+    mv ./terraform /usr/local/bin/terraform
 
 RUN VERSION="$( curl -LsS https://api.github.com/repos/gruntwork-io/terragrunt/releases/latest | jq -r .name )" ;\
-    curl -LsS https://github.com/gruntwork-io/terragrunt/releases/download/${VERSION}/terragrunt_linux_${ARCHITECTURE} -o /usr/bin/terragrunt ;\
-    chmod +x /usr/bin/terragrunt
+    curl -LsS https://github.com/gruntwork-io/terragrunt/releases/download/${VERSION}/terragrunt_linux_${ARCHITECTURE} -o /usr/local/bin/terragrunt ;\
+    chmod +x /usr/local/bin/terragrunt
 
 RUN VERSION="$(curl -LsS https://api.github.com/repos/aquasecurity/tfsec/releases/latest | jq -r .name)"; \
     curl -LsS https://github.com/aquasecurity/tfsec/releases/download/${VERSION}/tfsec-linux-${ARCHITECTURE} -o /usr/local/bin/tfsec; \
@@ -61,7 +61,7 @@ RUN DOWNLOAD_URL="$( curl -LsS https://api.github.com/repos/terraform-linters/tf
     unzip tflint.zip ;\
     rm -f tflint.zip ;\
     chmod +x tflint ;\
-    mv tflint /usr/bin/tflint
+    mv tflint /usr/local/bin/tflint
 
 RUN DOWNLOAD_URL="$( curl -LsS https://api.github.com/repos/minamijoyo/hcledit/releases/latest | grep -o -E "https://.+?_linux_${ARCHITECTURE}.tar.gz" )" ;\
     curl -LsS "${DOWNLOAD_URL}" -o hcledit.tar.gz ;\
@@ -69,17 +69,20 @@ RUN DOWNLOAD_URL="$( curl -LsS https://api.github.com/repos/minamijoyo/hcledit/r
     rm -f hcledit.tar.gz ;\
     chmod +x hcledit ;\
     chown "$(id -u):$(id -g)" hcledit ;\
-    mv hcledit /usr/bin/hcledit
+    mv hcledit /usr/local/bin/hcledit
 
 RUN DOWNLOAD_URL="$( curl -LsS https://api.github.com/repos/mozilla/sops/releases/latest | grep -o -E "https://.+?\.linux.${ARCHITECTURE}" )" ;\
-    curl -LsS "${DOWNLOAD_URL}" -o /usr/bin/sops ;\
-    chmod +x /usr/bin/sops
+    curl -LsS "${DOWNLOAD_URL}" -o /usr/local/bin/sops ;\
+    chmod +x /usr/local/bin/sops
 
 RUN curl -LsS "https://awscli.amazonaws.com/awscli-exe-linux-${ARCHITECTURE}.zip" -o /tmp/awscli.zip ;\
     mkdir -p /usr/local/awscli ;\
     unzip -q /tmp/awscli.zip -d /usr/local/awscli ;\
     /usr/local/awscli/aws/install
 
+RUN curl -LsS https://amazon-ecs-cli.s3.amazonaws.com/ecs-cli-linux-amd64-latest -o /usr/local/bin/ecs-cli; \
+    chmod +x /usr/local/bin/ecs-cli
+    
 ARG NAME="Terraform IaaC Docker Image"
 ARG DESCRIPTION="Docker image for my personal development on a windows machines"
 ARG REPO_URL="https://github.com/nrmatukumalli/dockertfimage"
