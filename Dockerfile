@@ -1,127 +1,95 @@
-<<<<<<< HEAD
 FROM ubuntu:latest
 
-ARG TF_VERSION=1.0.11
-ARG TFSEC_VERSION=0.63.1
-ARG TFLINT_VERSION=0.33.2
-ARG TFDOC_VERSION=0.16.0
-ARG TG_VERSION=0.35.14
+ARG ARCHITECTURE=amd64
 
-RUN apt update \
-  && apt upgrade -y
+ARG AWSCLI_VERSION=latest
+ARG TFCLI_VERSION=latest
+ARG TGCLI_VERSION=latest
 
-RUN apt install -y curl \
-  wget \
-  unzip \
-  zip \
-  gzip \
-  nodejs \
-  jq \
-  tar \
-  dnsutils \
-  python3.8 \
-  vim
-  
-RUN apt install -y python3-pip git golang-go zsh
-  
-RUN pip3 install setuptools wheel
-RUN	pip3 install cryptography \
-=======
-FROM public.ecr.aws/amazonlinux/amazonlinux:latest
-
-ENV GOVERSION 1.17.1
 ENV GOROOT /opt/go
 ENV GOPATH /root/.go
 
-ARG tf_version=1.2.4
-ARG tfsec_version=v1.26.3
-ARG tflint_version=v0.38.1
-ARG tfdoc_version=v0.16.0
+COPY pip/requirements.txt /tmp/requirements.txt
 
-RUN yum update -y
-RUN yum install -y wget \
-    net-tools \
-    unzip \
-    gzip \
-    bash-completion \
-    figlet \
-    zsh \
-    tree \
-    nodejs \
-    jq \
-    graphviz \
-    bind-utils \
-    tar
+# Install apt repositories
+RUN apt-get update -y; \
+    apt-get upgrade -y; \
+    apt-get install -y \
+        ca-certificates \
+        curl \
+        git \
+        jq \
+        vim \
+        unzip \
+        python3 \
+        python3-pip \
+        zip \
+        golang-go \
+        zsh \
+        dnsutils \
+        tar \
+        gzip; \
+    apt-get clean; \
+    rm -rf /var/lib/apt/lists/*
 
-RUN amazon-linux-extras install epel
-RUN amazon-linux-extras install vim
-RUN amazon-linux-extras install python3.8
-RUN amazon-linux-extras install ansible2
-RUN amazon-linux-extras install ecs
-RUN amazon-linux-extras install golang1.11
+RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 
-RUN pip3.8 install --upgrade pip
+RUN VERSION="$(curl -LsS https://releases.hashicorp.com/terraform/ | grep -Eo '/[.0-9]+/' | grep -Eo '[.0-9]+' | sort -V | tail -1 )" ;\
+    curl -LsS https://releases.hashicorp.com/terraform/${VERSION}/terraform_${VERSION}_linux_${ARCHITECTURE}.zip -o ./terraform.zip ;\
+    unzip ./terraform.zip ;\
+    rm -f ./terraform.zip ;\
+    chmod +x ./terraform ;\
+    mv ./terraform /usr/local/bin/terraform
 
-RUN pip3 install setuptools wheel setuptools-rust
-RUN pip3 install cryptography \
->>>>>>> f693e86447d959e1cc18c784e820fe07be82c873
-    PyYAML \
-    boto3 \
-    yq \
-    bs4 \
-    requests \
-    databricks-cli \
-    pre-commit \
-    certifi \
-    awscli \
-    diagrams \
-    pytest \
-    tftest \
-    s3cmd \
-    checkov \
-    airiam \
-<<<<<<< HEAD
-    blastradius \
-	terraform-compliance
+RUN VERSION="$( curl -LsS https://api.github.com/repos/gruntwork-io/terragrunt/releases/latest | jq -r .name )" ;\
+    curl -LsS https://github.com/gruntwork-io/terragrunt/releases/download/${VERSION}/terragrunt_linux_${ARCHITECTURE} -o /usr/local/bin/terragrunt ;\
+    chmod +x /usr/local/bin/terragrunt
 
-RUN cd /usr/local/bin && wget https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip \
-    && unzip terraform_${TF_VERSION}_linux_amd64.zip  && rm terraform_${TF_VERSION}_linux_amd64.zip
-	
-RUN wget -O /usr/local/bin/terragrunt https://github.com/gruntwork-io/terragrunt/releases/download/v${TG_VERSION}/terragrunt_linux_amd64 \
-	&& chmod +x /usr/local/bin/terragrunt
-=======
-    blastradius 
+RUN VERSION="$(curl -LsS https://api.github.com/repos/aquasecurity/tfsec/releases/latest | jq -r .name)"; \
+    curl -LsS https://github.com/aquasecurity/tfsec/releases/download/${VERSION}/tfsec-linux-${ARCHITECTURE} -o /usr/local/bin/tfsec; \
+    chmod +x /usr/local/bin/tfsec
 
-# Install Terraform
-RUN cd /usr/local/bin && wget https://releases.hashicorp.com/terraform/${tf_version}/terraform_${tf_version}_linux_amd64.zip \
-    && unzip terraform_${tf_version}_linux_amd64.zip  && rm terraform_${tf_version}_linux_amd64.zip
->>>>>>> f693e86447d959e1cc18c784e820fe07be82c873
+RUN VERSION="$(curl -LsS https://api.github.com/repos/tmccombs/hcl2json/releases/latest | jq -r .name)"; \
+    curl -LsS https://github.com/tmccombs/hcl2json/releases/download/v${VERSION}/hcl2json_linux_${ARCHITECTURE} -o /usr/local/bin/hcl2json; \
+    chmod +x /usr/local/bin/hcl2json
 
-RUN cd /root && curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
-    && unzip awscliv2.zip && ./aws/install \
-    && rm -rf /root/awscliv2.zip \
-    && rm -rf /root/aws
+RUN VERSION="$(curl -LsS https://api.github.com/repos/suzuki-shunsuke/tfcmt/releases/latest | jq -r .name)"; \
+    curl -LsS https://github.com/suzuki-shunsuke/tfcmt/releases/download/${VERSION}/tfcmt_linux_${ARCHITECTURE}.tar.gz -o /tmp/tfcmt_linux_amd64.tar.gz;\
+    tar -xvzf /tmp/tfcmt_linux_amd64.tar.gz; \
+    mv tfcmt /usr/local/bin/tfcmt; \
+    chmod +x /usr/local/bin/tfcmt
 
-RUN curl -Lo /usr/local/bin/ecs-cli https://amazon-ecs-cli.s3.amazonaws.com/ecs-cli-linux-amd64-latest \
-    && chmod +x /usr/local/bin/ecs-cli
+RUN DOWNLOAD_URL="$( curl -LsS https://api.github.com/repos/terraform-linters/tflint/releases/latest | grep -o -E "https://.+?_linux_${ARCHITECTURE}.zip" )" ;\
+    curl -LsS "${DOWNLOAD_URL}" -o tflint.zip ;\
+    unzip tflint.zip ;\
+    rm -f tflint.zip ;\
+    chmod +x tflint ;\
+    mv tflint /usr/local/bin/tflint
 
-RUN curl -Lo /usr/local/bin/aws-iam-authenticator https://amazon-eks.s3-us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/amd64/aws-iam-authenticator \
-    && chmod +x /usr/local/bin/aws-iam-authenticator
-	
-RUN cd /root && wget https://github.com/terraform-linters/tflint/releases/download/v${TFLINT_VERSION}/tflint_linux_amd64.zip	 \
-    && unzip /root/tflint_linux_amd64.zip \
-    && mv /root/tflint /usr/local/bin/tflint \
-    && rm /root/tflint_linux_amd64.zip
+RUN DOWNLOAD_URL="$( curl -LsS https://api.github.com/repos/minamijoyo/hcledit/releases/latest | grep -o -E "https://.+?_linux_${ARCHITECTURE}.tar.gz" )" ;\
+    curl -LsS "${DOWNLOAD_URL}" -o hcledit.tar.gz ;\
+    tar -xf hcledit.tar.gz ;\
+    rm -f hcledit.tar.gz ;\
+    chmod +x hcledit ;\
+    chown "$(id -u):$(id -g)" hcledit ;\
+    mv hcledit /usr/local/bin/hcledit
 
-RUN curl -Lo /usr/local/bin/tfsec https://github.com/aquasecurity/tfsec/releases/download/v${TFSEC_VERSION}/tfsec-linux-amd64 \
-    && chmod +x /usr/local/bin/tfsec
+RUN DOWNLOAD_URL="$( curl -LsS https://api.github.com/repos/mozilla/sops/releases/latest | grep -o -E "https://.+?\.linux.${ARCHITECTURE}" )" ;\
+    curl -LsS "${DOWNLOAD_URL}" -o /usr/local/bin/sops ;\
+    chmod +x /usr/local/bin/sops
 
-RUN cd /root && wget -O /root/terraform-docs-${TFDOC_VERSION}-linux-amd64.tar.gz https://github.com/terraform-docs/terraform-docs/releases/download/v${TFDOC_VERSION}/terraform-docs-v${TFDOC_VERSION}-linux-amd64.tar.gz \
-    && tar -xvzf /root/terraform-docs-${TFDOC_VERSION}-linux-amd64.tar.gz  \
-    && mv /root/terraform-docs /usr/local/bin/terraform-docs \
-    && chmod +x /usr/local/bin/terraform-docs \
-<<<<<<< HEAD
-    && rm /root/terraform-docs-${TFDOC_VERSION}-linux-amd64.tar.gz
+RUN curl -LsS "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscli.zip ;\
+    mkdir -p /usr/local/awscli ;\
+    unzip -q /tmp/awscli.zip -d /usr/local/awscli ;\
+    /usr/local/awscli/aws/install
+
+RUN VERSION="$(curl -LsS https://api.github.com/repos/kubernetes-sigs/aws-iam-authenticator/releases/latest | jq -r .name)"; \
+    VERSION_NUMBER="$(echo $VERSION | tr -d 'v')" ;\
+    curl -LsS https://github.com/kubernetes-sigs/aws-iam-authenticator/releases/download/${VERSION}/aws-iam-authenticator_${VERSION_NUMBER}_linux_${ARCHITECTURE} -o /usr/local/bin/aws-iam-authenticator ; \
+    chmod +x /usr/local/bin/aws-iam-authenticator
+
+RUN curl -LsS https://amazon-ecs-cli.s3.amazonaws.com/ecs-cli-linux-amd64-latest -o /usr/local/bin/ecs-cli; \
+    chmod +x /usr/local/bin/ecs-cli
 
 RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1.2/zsh-in-docker.sh)" -- \
     -t https://github.com/denysdovhan/spaceship-prompt \
@@ -131,33 +99,18 @@ RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/
     -p ssh-agent \
     -p https://github.com/zsh-users/zsh-autosuggestions \
     -p https://github.com/zsh-users/zsh-completions
-	
+
 RUN mkdir -p /root/.ssh
 RUN mkdir -p /opt/go
-
-WORKDIR /root/workspace
-=======
-    && rm /root/terraform-docs-${tfdoc_version}-linux-amd64.tar.gz
-
-RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
-
-# Install
-#   - eksctl
-#   - kubectl
-
 RUN mkdir -p /etc/profile.d/
 COPY etc/profile.d/profile.sh /etc/profile.d/profile.sh
-COPY usr/local/bin/gwokta /usr/local/bin/gwokta
-COPY usr/local/bin/gwsso /usr/local/bin/gwsso
-COPY usr/local/bin/aws-auth /usr/local/bin/aws-auth
+COPY root/.profile root/.profile
+COPY root/.zshrc root/.zshrc
 
-RUN chmod +x /usr/local/bin/gwokta
-RUN chmod +x /usr/local/bin/gwsso
-RUN chmod +x /usr/local/bin/aws-auth
+ARG NAME="Terraform IaaC Docker Image"
+ARG DESCRIPTION="Docker image for my personal development on a windows machines"
+ARG REPO_URL="https://github.com/nrmatukumalli/dockertfimage"
+ARG AUTHOR="Nageswara Rao Matukumalli"
 
-RUN rm /root/LICENSE /root/README.md
-
-WORKDIR /root
-
->>>>>>> f693e86447d959e1cc18c784e820fe07be82c873
+WORKDIR /workspace
 CMD ["/bin/zsh"]

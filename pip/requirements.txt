@@ -1,0 +1,9 @@
+setuptools==66.1.1
+wheel==0.38.4
+cryptography==39.0.0
+requests==2.28.2
+python-hcl2==4.3.0
+PyYAML==6.0
+pytest==7.2.1
+boto3==1.26.57
+ansible==7.1.0
