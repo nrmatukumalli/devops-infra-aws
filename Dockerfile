@@ -86,7 +86,7 @@ RUN curl -LsS "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp
     /usr/local/awscli/aws/install
 
 RUN VERSION="$(curl -LsS https://api.github.com/repos/kubernetes-sigs/aws-iam-authenticator/releases/latest | jq -r .name)"; \
-    VERSION_NUMBER="$(echo $VERSION | tr -d 'v')" ;\
+    VERSION_NUMBER="$(echo "$VERSION" | tr -d 'v')" ;\
     curl -LsS "https://github.com/kubernetes-sigs/aws-iam-authenticator/releases/download/${VERSION}/aws-iam-authenticator_${VERSION_NUMBER}_linux_${ARCHITECTURE}" -o /usr/local/bin/aws-iam-authenticator ; \
     chmod +x /usr/local/bin/aws-iam-authenticator
 
