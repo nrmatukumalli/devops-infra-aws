@@ -55,61 +55,92 @@ savelog(){
     printf 'Saved logs:\n    '$txtfile'\n    '$rawfile'\n'
 }
 
+function cleantf() {
+  location="${HOME}/"
+
+  sudo find ${location} -type f -name ".terraform.lock.hcl" -prune -exec rm -rf {} \;
+  sudo find ${location} -type d -name ".terraform" -prune -exec rm -rf {} \;
+  sudo find ${location} -type d -name ".terragrunt-cache" -prune -exec rm -rf {} \;
+  sudo find ${location} -type f -name "terragrunt_rendered.json" -prune -exec rm -rf {} \;
+}
+
+function tfsum() {
+  # Slurp to combine each separate json object into a single array, raw output for plain strings
+  #
+  # First map filters out the planned changes and builds a smaller object from the addr and action
+  # Group by the actions, to put them in create, delete, read, and update arrays
+  # Second map defines the action as a variable, removes the action from the object, deletes the action
+  #   from each object, pulls the addr string out of the objects, and builds a string for each action group.
+  #
+  # Finally, run the output through another array pull to turn the array of strings into just strings.
+
+  terraform plan -json |
+    jq --slurp --raw-output '
+      map(
+        select(.type == "planned_change") |
+          {
+            addr: .change.resource.addr,
+            action: .change.action
+          }
+      ) |
+      group_by(.action) |
+      map(
+        .[0].action as $action |
+        del (.[].action) |
+        map(.addr) |
+        "\($action) (\(. | length)):\n    \(map(.) | join("\n    "))\n"
+      ) |
+      .[]
+    '
+}
+
+function aws_account() {
+  aws sts get-caller-identity $@ | jq -r .Account
+}
+
+function aws_assume_role_arn() {
+  aws sts get-caller-identity $@ | jq -r .Arn
+}
+
+function reset-aws() {
+  unset AWS_PROFILE
+  unset AWS_ACCESS_KEY_ID
+  unset AWS_SECRET_ACCESS_KEY
+  unset AWS_SESSION_TOKEN
+  unset AWS_SESSION_EXPIRATION
+ }
+
+ function statels {
+    readonly _path=${1}
+    aws s3 ls s3://github-mygainwell-acuity-tf-state/${_path}
+}
+
 aws_auth() {
-    unset AWS_ACCESS_KEY_ID
-    unset AWS_SECRET_ACCESS_KEY
-    unset AWS_SESSION_TOKEN
-    unset AWS_SESSION_EXPIRATION
+    _role_arn="${1}"
 
-    eval $(op signin my)
-    op_item_id="i7vsocxltjcekrt6euscn7uply"
-    aws_items=$(op get item "$op_item_id" --fields AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_TOTP_SERIAL_NUMBER)
-    aws_role=$(op get item "$op_item_id" --fields Role)
+    response="$(aws sts assume-role --output json --role-arn ${_role_arn} --role-session-name "$USER" --duration-seconds 3600)"
 
-    export AWS_ACCESS_KEY_ID=$(echo $aws_items | jq -r '.AWS_ACCESS_KEY_ID')
-    export AWS_SECRET_ACCESS_KEY=$(echo $aws_items | jq -r '.AWS_SECRET_ACCESS_KEY')
-    AWS_TOTP_SERIAL_NUMBER=$(echo $aws_items | jq -r '.AWS_TOTP_SERIAL_NUMBER')
+    local access_key_id
+    access_key_id=$(echo "$response" | jq -r '.Credentials.AccessKeyId')
+    local secret_access_key
+    secret_access_key=$(echo "$response" | jq -r '.Credentials.SecretAccessKey')
+    local session_token
+    session_token=$(echo "$response" | jq -r '.Credentials.SessionToken')
+    local expiration
+    expiration=$(echo "response" | jq -r '.Credentials.Expiration')
 
-    aws-auth --serial-number $AWS_TOTP_SERIAL_NUMBER --role-arn $aws_role --role-duration-seconds 3600 --token-code $(op get totp "$op_item_id")
+    echo "export AWS_ACCESS_KEY_ID='$access_key_id'"
+    echo "export AWS_SECRET_ACCESS_KEY='$secret_access_key'"
+    echo "export AWS_SESSION_TOKEN='$session_token'"
+    echo "export AWS_SESSION_EXPIRATION='$expiration'"
 }
 
-git_oauth () {
-    unset GITHUB_OAUTH_TOKEN 
-
-    eval $(op signin my)
-    op_item_id=$(op list items | jq -r '.[] | select(.overview.title == "github:fullpriv:pat") | .uuid')
-    export GITHUB_OAUTH_TOKEN=$(op get item ${op_item_id} --fields password)
-}
-
-#export GITHUB_OAUTH_TOKEN=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
-export GITHUB_OAUTH_TOKEN=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
-export AUTHENTICATION_URL=fedssoawiew1.clmgmt.entsvcs.com
-export DXC_FEDSSO_USERNAME=vmatukumall2@dxcmgmt.com
 export AWS_DEFAULT_REGION=us-east-1
 export AWS_PAGER=""
-export PATH="$PATH:/mnt/c/Program Files/Microsoft VS Code/bin:/home/vmatukumalli/.local/bin:/mnt/c/Program Files/Docker/Docker/resources/bin:/mnt/c/ProgramData/DockerDesktop/version-bin"
-
-export GOROOT=/usr/local/go
-export GOPATH=$HOME/.local/go
+export GOROOT=/opt/go
+export GOPATH=/root/.go
 export PATH=$PATH:$GOPATH/bin:$GOROOT/bin
 
-#export TF_DATA_DIR=/home/vmatukumalli/.terraform
-
-# Start logging into new file
-alias startnewlog='unset SCRIPT_LOG_FILE && smart_script -v'
-alias opon='eval $(op signin my)'
-alias tfi='terraform init -upgrade=true'
-alias tfp='terraform plan'
-alias tfa='terraform apply -auto-approve'
-alias tfd='terraform destroy -auto-approve'
-alias tfv='terraform validate'
-alias tfc='find . -type d -name ".terraform.lock.hcl" -prune -exec rm -rf {} \;'
-alias creds='eval $(aws_auth)'
-
-alias connect='aws ssm start-session --target'
-alias gwrepo='cd /home/vmatukumalli/Github/mygainwell/repos'
-alias myrepo='cd /home/vmatukumalli/Github/nrmatukumalli'
-
-
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+alias tgi='terragrunt run-all init'
+alias tgp='terragrunt run-all plan'
+alias tga='terragrunt run-all apply'
