@@ -109,7 +109,7 @@ COPY root/.zshrc root/.zshrc
 
 ARG NAME="Terraform IaaC Docker Image"
 ARG DESCRIPTION="Docker image for my personal development on a windows machines"
-ARG REPO_URL="https://github.com/nrmatukumalli/dockertfimage"
+ARG REPO_URL="https://github.com/nrmatukumalli/dockerimage"
 ARG AUTHOR="Nageswara Rao Matukumalli"
 
 WORKDIR /workspace
