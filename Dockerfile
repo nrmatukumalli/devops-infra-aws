@@ -105,8 +105,8 @@ RUN sh -c "$(wget --progress=dot:giga -O- https://github.com/deluan/zsh-in-docke
 RUN mkdir -p /root/.ssh /opt/go /etc/profile.d/
 
 COPY etc/profile.d/profile.sh /etc/profile.d/profile.sh
-COPY root/.profile root/.profile
-COPY root/.zshrc root/.zshrc
+COPY root/.profile /root/.profile
+COPY root/.zshrc /root/.zshrc
 
 ARG NAME="Terraform IaaC Docker Image"
 ARG DESCRIPTION="Docker image for my personal development on a windows machines"
