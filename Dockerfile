@@ -6,6 +6,9 @@ ARG AWSCLI_VERSION=latest
 ARG TFCLI_VERSION=latest
 ARG TGCLI_VERSION=latest
 
+ENV GOROOT /opt/go
+ENV GOPATH /root/.go
+
 COPY pip/requirements.txt /tmp/requirements.txt
 
 # Install apt repositories
@@ -80,13 +83,34 @@ RUN curl -LsS "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp
     unzip -q /tmp/awscli.zip -d /usr/local/awscli ;\
     /usr/local/awscli/aws/install
 
+RUN VERSION="$(curl -LsS https://api.github.com/repos/kubernetes-sigs/aws-iam-authenticator/releases/latest | jq -r .name)"; \
+    VERSION_NUMBER="$(echo $VERSION | tr -d 'v')" ;\
+    curl -LsS https://github.com/kubernetes-sigs/aws-iam-authenticator/releases/download/${VERSION}/aws-iam-authenticator_${VERSION_NUMBER}_linux_${ARCHITECTURE} -o /usr/local/bin/aws-iam-authenticator ; \
+    chmod +x /usr/local/bin/aws-iam-authenticator
+
 RUN curl -LsS https://amazon-ecs-cli.s3.amazonaws.com/ecs-cli-linux-amd64-latest -o /usr/local/bin/ecs-cli; \
     chmod +x /usr/local/bin/ecs-cli
-    
+
+RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1.2/zsh-in-docker.sh)" -- \
+    -t https://github.com/denysdovhan/spaceship-prompt \
+    -a 'SPACESHIP_PROMPT_ADD_NEWLINE="false"' \
+    -a 'SPACESHIP_PROMPT_SEPARATE_LINE="true"' \
+    -p git \
+    -p ssh-agent \
+    -p https://github.com/zsh-users/zsh-autosuggestions \
+    -p https://github.com/zsh-users/zsh-completions
+
+RUN mkdir -p /root/.ssh
+RUN mkdir -p /opt/go
+RUN mkdir -p /etc/profile.d/
+COPY etc/profile.d/profile.sh /etc/profile.d/profile.sh
+COPY root/.profile root/.profile
+COPY root/.zshrc root/.zshrc
+
 ARG NAME="Terraform IaaC Docker Image"
 ARG DESCRIPTION="Docker image for my personal development on a windows machines"
 ARG REPO_URL="https://github.com/nrmatukumalli/dockertfimage"
 ARG AUTHOR="Nageswara Rao Matukumalli"
 
 WORKDIR /workspace
-CMD ["show-version.sh"]
+CMD ["/bin/zsh"]
