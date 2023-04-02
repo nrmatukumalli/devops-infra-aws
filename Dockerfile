@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+FROM ubuntu:lunar
 
 ARG ARCHITECTURE=amd64
 
@@ -93,7 +93,7 @@ RUN VERSION="$(curl -LsS https://api.github.com/repos/kubernetes-sigs/aws-iam-au
 RUN curl -LsS https://amazon-ecs-cli.s3.amazonaws.com/ecs-cli-linux-amd64-latest -o /usr/local/bin/ecs-cli; \
     chmod +x /usr/local/bin/ecs-cli
 
-RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1.2/zsh-in-docker.sh)" -- \
+RUN sh -c "$(wget --progress=dot:giga -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1.2/zsh-in-docker.sh)" -- \
     -t https://github.com/denysdovhan/spaceship-prompt \
     -a 'SPACESHIP_PROMPT_ADD_NEWLINE="false"' \
     -a 'SPACESHIP_PROMPT_SEPARATE_LINE="true"' \
@@ -102,9 +102,8 @@ RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/
     -p https://github.com/zsh-users/zsh-autosuggestions \
     -p https://github.com/zsh-users/zsh-completions
 
-RUN mkdir -p /root/.ssh
-RUN mkdir -p /opt/go
-RUN mkdir -p /etc/profile.d/
+RUN mkdir -p /root/.ssh /opt/go /etc/profile.d/
+
 COPY etc/profile.d/profile.sh /etc/profile.d/profile.sh
 COPY root/.profile root/.profile
 COPY root/.zshrc root/.zshrc
