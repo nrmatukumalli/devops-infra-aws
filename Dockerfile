@@ -14,9 +14,9 @@ COPY pip/requirements.txt /tmp/requirements.txt
 SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]
 
 # Install apt repositories
-RUN apt update -y; \
-    apt upgrade -y; \
-    apt --no-install-recommends install -y \
+RUN apt-get update -y; \
+    apt-get upgrade -y; \
+    apt-get --no-install-recommends install -y \
     ca-certificates \
     wget \
     curl \
@@ -34,7 +34,7 @@ RUN apt update -y; \
     zsh \
     python3.12-venv \
     gzip; \
-    apt clean; \
+    apt-get clean; \
     rm -rf /var/lib/apt/lists/*
 
 RUN wget https://github.com/robbyrussell/oh-my-zsh/raw/master/tools/install.sh -O - | zsh || true
