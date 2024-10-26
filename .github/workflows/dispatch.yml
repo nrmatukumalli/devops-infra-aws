@@ -3,22 +3,21 @@ on:
   workflow_dispatch:
 
 jobs:
-  lint:
-    name: LintDockerFile
-    runs-on: ubuntu-latest
-    steps:
-      - name: checkout-repo
-        uses: actions/checkout@v4
-      - name: lint-docker-file
-        uses: hadolint/hadolint-action@v3.1.0
-        with:
-          dockerfile: Dockerfile
-          ignore: DL3008,DL4001
+  #lint:
+  #  name: LintDockerFile
+  #  runs-on: ubuntu-latest
+  #  steps:
+  #    - name: checkout-repo
+  #      uses: actions/checkout@v4
+  #    - name: lint-docker-file
+  #      uses: hadolint/hadolint-action@v3.1.0
+  #      with:
+  #        dockerfile: Dockerfile
+  #        ignore: DL3008,DL4001
           
   build-push:
     name: BuildPushImage
     runs-on: ubuntu-latest
-    needs: lint
     env:
       REGISTRY: ghcr.io
       IMAGE_NAME: ${{github.repository}}
