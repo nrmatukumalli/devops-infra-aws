@@ -39,11 +39,11 @@ RUN apt-get update -y; \
 
 RUN wget --progress=dot:giga https://github.com/robbyrussell/oh-my-zsh/raw/master/tools/install.sh -O - | zsh || true
 
-#RUN mkdir -p /root/.ssh /opt/go /etc/profile.d/
+RUN mkdir -p /root/.ssh /opt/go /etc/profile.d/
 
-#COPY etc/profile.d/profile.sh /etc/profile.d/profile.sh
-#COPY root/.profile /root/.profile
-#COPY root/.zshrc /root/.zshrc
+COPY etc/profile.d/profile.sh /etc/profile.d/profile.sh
+COPY root/.profile /root/.profile
+COPY root/.zshrc /root/.zshrc
 
 #RUN python3 -m venv /root/venv
 #RUN source /root/venv/bin/activate
