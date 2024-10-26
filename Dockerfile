@@ -69,7 +69,7 @@ RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ 
     chmod +x /usr/bin/terragrunt
 
 RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
-    DOWNLOAD_URL="$( curl -LsS https://api.github.com/repos/terraform-linters/tflint/releases/latest | grep -o -E 'https://.+?_linux_${ARCHITECTURE}.zip' )" ;\
+    DOWNLOAD_URL="$( curl -LsS https://api.github.com/repos/terraform-linters/tflint/releases/latest | grep -o -E \"https://.+?_linux_${ARCHITECTURE}.zip\" )" ;\
     for i in {1..5}; do curl -LsS "${DOWNLOAD_URL}" -o ./tflint.zip && break || sleep 15; done ;\
     unzip ./tflint.zip ;\
     rm -f ./tflint.zip ;\
@@ -77,7 +77,7 @@ RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ 
     mv ./tflint /usr/bin/tflint
 
 RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
-    DOWNLOAD_URL="$( curl -LsS https://api.github.com/repos/minamijoyo/hcledit/releases/latest | grep -o -E 'https://.+?_linux_${ARCHITECTURE}.tar.gz' )" ;\
+    DOWNLOAD_URL="$( curl -LsS https://api.github.com/repos/minamijoyo/hcledit/releases/latest | grep -o -E \"https://.+?_linux_${ARCHITECTURE}.tar.gz\" )" ;\
     for i in {1..5}; do curl -LsS "${DOWNLOAD_URL}" -o ./hcledit.tar.gz && break || sleep 15; done ;\
     tar -xf ./hcledit.tar.gz ;\
     rm -f ./hcledit.tar.gz ;\
@@ -86,7 +86,7 @@ RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ 
     mv ./hcledit /usr/bin/hcledit 
 
 RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
-    DOWNLOAD_URL="$( curl -LsS https://api.github.com/repos/getsops/sops/releases/latest | grep -o -E 'https://.+?\.linux.${ARCHITECTURE}' | head -1 )" ;\
+    DOWNLOAD_URL="$( curl -LsS https://api.github.com/repos/getsops/sops/releases/latest | grep -o -E \"https://.+?\.linux.${ARCHITECTURE}\" | head -1 )" ;\
     for i in {1..5}; do curl -LsS "${DOWNLOAD_URL}" -o /usr/bin/sops && break || sleep 15; done ;\
     chmod +x /usr/bin/sops
 
