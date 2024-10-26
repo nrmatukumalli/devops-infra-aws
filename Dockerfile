@@ -1,4 +1,4 @@
-FROM ubuntu:lunar
+FROM public.ecr.aws/ubuntu/ubuntu:24.04_stable
 
 ARG ARCHITECTURE=amd64
 
@@ -6,35 +6,57 @@ ARG AWSCLI_VERSION=latest
 ARG TFCLI_VERSION=latest
 ARG TGCLI_VERSION=latest
 
-ENV GOROOT /opt/go
-ENV GOPATH /root/.go
+ENV GOROOT=/opt/go
+ENV GOPATH=/root/.go
 
 COPY pip/requirements.txt /tmp/requirements.txt
 
 SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]
 
 # Install apt repositories
-RUN apt-get update -y; \
-    apt-get upgrade -y; \
-    apt-get --no-install-recommends install -y \
-        ca-certificates \
-        curl \
-        git \
-        jq \
-        vim \
-        unzip \
-        python3 \
-        python3-pip \
-        zip \
-        golang-go \
-        zsh \
-        dnsutils \
-        tar \
-        gzip; \
-    apt-get clean; \
+RUN apt update -y; \
+    apt upgrade -y; \
+    apt --no-install-recommends install -y \
+    ca-certificates \
+    wget \
+    curl \
+    git \
+    jq \
+    vim \
+    unzip \
+    python3 \
+    python3-pip \
+    zip \
+    golang-go \
+    zsh \
+    dnsutils \
+    tar \
+    zsh \
+    python3.12-venv \
+    gzip; \
+    apt clean; \
     rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
+RUN wget https://github.com/robbyrussell/oh-my-zsh/raw/master/tools/install.sh -O - | zsh || true
+
+RUN sh -c "$(wget --progress=dot:giga -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1.2/zsh-in-docker.sh)" -- \
+    -t https://github.com/denysdovhan/spaceship-prompt \
+    -a 'SPACESHIP_PROMPT_ADD_NEWLINE="false"' \
+    -a 'SPACESHIP_PROMPT_SEPARATE_LINE="true"' \
+    -p git \
+    -p ssh-agent \
+    -p https://github.com/zsh-users/zsh-autosuggestions \
+    -p https://github.com/zsh-users/zsh-completions
+
+RUN mkdir -p /root/.ssh /opt/go /etc/profile.d/
+
+COPY etc/profile.d/profile.sh /etc/profile.d/profile.sh
+COPY root/.profile /root/.profile
+COPY root/.zshrc /root/.zshrc
+
+#RUN python3 -m venv /root/venv
+#RUN source /root/venv/bin/activate
+#RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 
 RUN VERSION="$(curl -LsS https://releases.hashicorp.com/terraform/ | grep -Eo '/[.0-9]+/' | grep -Eo '[.0-9]+' | sort -V | tail -1 )" ;\
     curl -LsS "https://releases.hashicorp.com/terraform/${VERSION}/terraform_${VERSION}_linux_${ARCHITECTURE}.zip" -o ./terraform.zip ;\
@@ -76,9 +98,9 @@ RUN DOWNLOAD_URL="$( curl -LsS https://api.github.com/repos/minamijoyo/hcledit/r
     chown "$(id -u):$(id -g)" hcledit ;\
     mv hcledit /usr/local/bin/hcledit
 
-RUN DOWNLOAD_URL="$( curl -LsS https://api.github.com/repos/mozilla/sops/releases/latest | grep -o -E "https://.+?\.linux.${ARCHITECTURE}" )" ;\
-    curl -LsS "${DOWNLOAD_URL}" -o /usr/local/bin/sops ;\
-    chmod +x /usr/local/bin/sops
+#RUN DOWNLOAD_URL="$( curl -LsS https://api.github.com/repos/mozilla/sops/releases/latest | grep -o -E "https://.+?\.linux.${ARCHITECTURE}" )" ;\
+#    curl -LsS "${DOWNLOAD_URL}" -o /usr/local/bin/sops ;\
+#    chmod +x /usr/local/bin/sops
 
 RUN curl -LsS "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscli.zip ;\
     mkdir -p /usr/local/awscli ;\
@@ -92,26 +114,6 @@ RUN VERSION="$(curl -LsS https://api.github.com/repos/kubernetes-sigs/aws-iam-au
 
 RUN curl -LsS https://amazon-ecs-cli.s3.amazonaws.com/ecs-cli-linux-amd64-latest -o /usr/local/bin/ecs-cli; \
     chmod +x /usr/local/bin/ecs-cli
-
-RUN sh -c "$(wget --progress=dot:giga -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1.2/zsh-in-docker.sh)" -- \
-    -t https://github.com/denysdovhan/spaceship-prompt \
-    -a 'SPACESHIP_PROMPT_ADD_NEWLINE="false"' \
-    -a 'SPACESHIP_PROMPT_SEPARATE_LINE="true"' \
-    -p git \
-    -p ssh-agent \
-    -p https://github.com/zsh-users/zsh-autosuggestions \
-    -p https://github.com/zsh-users/zsh-completions
-
-RUN mkdir -p /root/.ssh /opt/go /etc/profile.d/
-
-COPY etc/profile.d/profile.sh /etc/profile.d/profile.sh
-COPY root/.profile /root/.profile
-COPY root/.zshrc /root/.zshrc
-
-ARG NAME="Terraform IaaC Docker Image"
-ARG DESCRIPTION="Docker image for my personal development on a windows machines"
-ARG REPO_URL="https://github.com/nrmatukumalli/dockerimage"
-ARG AUTHOR="Nageswara Rao Matukumalli"
 
 WORKDIR /workspace
 CMD ["/bin/zsh"]
