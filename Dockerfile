@@ -9,7 +9,7 @@ ARG TGCLI_VERSION=latest
 ENV GOROOT=/opt/go
 ENV GOPATH=/root/.go
 
-COPY pip/requirements.txt /tmp/pip_requirements.txt
+COPY --from=golang:1.21-bullseye /usr/local/go/ /usr/local/go/
 
 SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]
 
@@ -39,15 +39,10 @@ RUN apt-get update -y; \
 
 RUN wget --progress=dot:giga https://github.com/robbyrussell/oh-my-zsh/raw/master/tools/install.sh -O - | zsh || true
 
-RUN mkdir -p /root/.ssh /opt/go /etc/profile.d/
-
-COPY etc/profile.d/profile.sh /etc/profile.d/profile.sh
-COPY root/.profile /root/.profile
+RUN mkdir -p /root/.ssh /opt/go
 COPY root/.zshrc /root/.zshrc
 
 RUN python3 -m venv /root/venv
-#RUN source /root/venv/bin/activate
-#RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 
 RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
     VERSION="$( curl -LsS https://releases.hashicorp.com/terraform/ | grep -Eo '/[.0-9]+/' | grep -Eo '[.0-9]+' | sort -V | tail -1 )" ; \
