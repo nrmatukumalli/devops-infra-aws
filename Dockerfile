@@ -37,7 +37,7 @@ RUN apt-get update -y; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*
 
-RUN wget https://github.com/robbyrussell/oh-my-zsh/raw/master/tools/install.sh -O - | zsh || true
+RUN wget --progress=dot:giga https://github.com/robbyrussell/oh-my-zsh/raw/master/tools/install.sh -O - | zsh || true
 
 #RUN mkdir -p /root/.ssh /opt/go /etc/profile.d/
 
