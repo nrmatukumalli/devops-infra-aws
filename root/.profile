@@ -157,7 +157,7 @@ function get_env_name {
 
 function bootstrap {
     reset-aws
-    credentials
+    export AWS_PROFILE=runner
     account_id=$(get_aws_account_id $1)
     if [ "$1" = "mgmt" ]; then
         eval "$(get_session_token --role-arn arn:aws:iam::${account_id}:role/gwt-acuity-bootstrap-role --role-duration-seconds 3600 --role-session-name $SESSION_NAME)"
@@ -165,11 +165,12 @@ function bootstrap {
         eval "$(get_session_token --role-arn arn:aws:iam::350828950339:role/gwt-acuity-bootstrap-role --role-duration-seconds 3600 --role-session-name $SESSION_NAME)"
         eval "$(get_session_token --role-arn arn:aws:iam::${account_id}:role/gwt-acuity-bootstrap-role --role-duration-seconds 3600 --role-session-name $SESSION_NAME)"
     fi
+    unset AWS_PROFILE
 }
 
 function live {
     reset-aws
-    credentials
+    export AWS_PROFILE=runner
     account_id=$(get_aws_account_id $1)
     if [ "$1" = "mgmt" ]; then
         eval "$(get_session_token --role-arn arn:aws:iam::${account_id}:role/gwt-acuity-infra-oidc-role --role-duration-seconds 3600 --role-session-name $SESSION_NAME)"
@@ -177,11 +178,12 @@ function live {
         eval "$(get_session_token --role-arn arn:aws:iam::350828950339:role/gwt-acuity-infra-oidc-role --role-duration-seconds 3600 --role-session-name $SESSION_NAME)"
         eval "$(get_session_token --role-arn arn:aws:iam::${account_id}:role/gwt-acuity-infra-execution-role --role-duration-seconds 3600 --role-session-name $SESSION_NAME)"
     fi
+    unset AWS_PROFILE
 }
 
 function portal {
     reset-aws
-    credentials
+    export AWS_PROFILE=runner
     account_id=$(get_aws_account_id $1)
     if [ "$1" = "mgmt" ]; then
         eval "$(get_session_token --role-arn arn:aws:iam::${account_id}:role/gwt-acuity-gw360-oidc-role --role-duration-seconds 3600 --role-session-name $SESSION_NAME)"
@@ -189,6 +191,7 @@ function portal {
         eval "$(get_session_token --role-arn arn:aws:iam::350828950339:role/gwt-acuity-gw360-oidc-role --role-duration-seconds 3600 --role-session-name $SESSION_NAME)"
         eval "$(get_session_token --role-arn arn:aws:iam::${account_id}:role/gwt-acuity-gw360-execution-role --role-duration-seconds 3600 --role-session-name $SESSION_NAME)"
     fi
+    unset AWS_PROFILE
 }
 
 export AWS_DEFAULT_OUTPUT="json"
