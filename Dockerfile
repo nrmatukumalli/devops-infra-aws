@@ -45,7 +45,7 @@ COPY etc/profile.d/profile.sh /etc/profile.d/profile.sh
 COPY root/.profile /root/.profile
 COPY root/.zshrc /root/.zshrc
 
-#RUN python3 -m venv /root/venv
+RUN python3 -m venv /root/venv
 #RUN source /root/venv/bin/activate
 #RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 
