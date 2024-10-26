@@ -1,6 +1,6 @@
 FROM public.ecr.aws/ubuntu/ubuntu:24.04_stable
 
-ARG ARCHITECTURE=amd64
+ARG TARGETPLATFORM=linux/amd64
 
 ARG AWSCLI_VERSION=latest
 ARG TFCLI_VERSION=latest
@@ -9,7 +9,7 @@ ARG TGCLI_VERSION=latest
 ENV GOROOT=/opt/go
 ENV GOPATH=/root/.go
 
-COPY pip/requirements.txt /tmp/requirements.txt
+COPY pip/requirements.txt /tmp/pip_requirements.txt
 
 SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]
 
@@ -49,52 +49,62 @@ COPY root/.zshrc /root/.zshrc
 #RUN source /root/venv/bin/activate
 #RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 
-RUN VERSION="$(curl -LsS https://releases.hashicorp.com/terraform/ | grep -Eo '/[.0-9]+/' | grep -Eo '[.0-9]+' | sort -V | tail -1 )" ;\
-    curl -LsS "https://releases.hashicorp.com/terraform/${VERSION}/terraform_${VERSION}_linux_${ARCHITECTURE}.zip" -o ./terraform.zip ;\
-    unzip ./terraform.zip ;\
-    rm -f ./terraform.zip ;\
-    chmod +x ./terraform ;\
-    mv ./terraform /usr/local/bin/terraform
-RUN VERSION="$( curl -LsS https://api.github.com/repos/gruntwork-io/terragrunt/releases/latest | jq -r .name )" ;\
-    curl -LsS "https://github.com/gruntwork-io/terragrunt/releases/download/${VERSION}/terragrunt_linux_${ARCHITECTURE}" -o /usr/local/bin/terragrunt ;\
-    chmod +x /usr/local/bin/terragrunt
-RUN VERSION="$(curl -LsS https://api.github.com/repos/aquasecurity/tfsec/releases/latest | jq -r .name)"; \
-    curl -LsS "https://github.com/aquasecurity/tfsec/releases/download/${VERSION}/tfsec-linux-${ARCHITECTURE}" -o /usr/local/bin/tfsec; \
-    chmod +x /usr/local/bin/tfsec
-RUN VERSION="$(curl -LsS https://api.github.com/repos/tmccombs/hcl2json/releases/latest | jq -r .name)"; \
-    curl -LsS "https://github.com/tmccombs/hcl2json/releases/download/v${VERSION}/hcl2json_linux_${ARCHITECTURE}" -o /usr/local/bin/hcl2json; \
-    chmod +x /usr/local/bin/hcl2json
-RUN VERSION="$(curl -LsS https://api.github.com/repos/suzuki-shunsuke/tfcmt/releases/latest | jq -r .name)"; \
-    curl -LsS "https://github.com/suzuki-shunsuke/tfcmt/releases/download/${VERSION}/tfcmt_linux_${ARCHITECTURE}.tar.gz" -o /tmp/tfcmt_linux_amd64.tar.gz;\
-    tar -xvzf /tmp/tfcmt_linux_amd64.tar.gz; \
-    mv tfcmt /usr/local/bin/tfcmt; \
-    chmod +x /usr/local/bin/tfcmt
-RUN DOWNLOAD_URL="$( curl -LsS https://api.github.com/repos/terraform-linters/tflint/releases/latest | grep -o -E "https://.+?_linux_${ARCHITECTURE}.zip" )" ;\
-    curl -LsS "${DOWNLOAD_URL}" -o tflint.zip ;\
-    unzip tflint.zip ;\
-    rm -f tflint.zip ;\
-    chmod +x tflint ;\
-    mv tflint /usr/local/bin/tflint
-RUN DOWNLOAD_URL="$( curl -LsS https://api.github.com/repos/minamijoyo/hcledit/releases/latest | grep -o -E "https://.+?_linux_${ARCHITECTURE}.tar.gz" )" ;\
-    curl -LsS "${DOWNLOAD_URL}" -o hcledit.tar.gz ;\
-    tar -xf hcledit.tar.gz ;\
-    rm -f hcledit.tar.gz ;\
-    chmod +x hcledit ;\
-    chown "$(id -u):$(id -g)" hcledit ;\
-    mv hcledit /usr/local/bin/hcledit
-#RUN DOWNLOAD_URL="$( curl -LsS https://api.github.com/repos/mozilla/sops/releases/latest | grep -o -E "https://.+?\.linux.${ARCHITECTURE}" )" ;\
-#    curl -LsS "${DOWNLOAD_URL}" -o /usr/local/bin/sops ;\
-#    chmod +x /usr/local/bin/sops
-RUN curl -LsS "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscli.zip ;\
+RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
+    VERSION="$( curl -LsS https://releases.hashicorp.com/terraform/ | grep -Eo '/[.0-9]+/' | grep -Eo '[.0-9]+' | sort -V | tail -1 )" ; \
+    for i in {1..5}; do curl -LsS \
+        https://releases.hashicorp.com/terraform/${VERSION}/terraform_${VERSION}_linux_${ARCHITECTURE}.zip -o ./terraform.zip \
+        && break || sleep 15; \
+    done ; \
+    unzip ./terraform.zip ; \
+    rm -f ./terraform.zip ; \
+    chmod +x ./terraform ; \
+    mv ./terraform /usr/bin/terraform
+
+RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ; \
+    VERSION="$( curl -LsS https://api.github.com/repos/opentofu/opentofu/releases/latest | jq -r .tag_name | sed 's/^v//' )" ; \
+    for i in {1..5}; do curl -LsS \
+        https://github.com/opentofu/opentofu/releases/download/v${VERSION}/tofu_${VERSION}_${ARCHITECTURE}.deb -o ./tofu.deb \
+        && break || sleep 15; \
+    done ; \
+    dpkg -i ./tofu.deb ;\
+    rm -f ./tofu.deb ;
+
+RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
+    VERSION="$( curl -LsS https://api.github.com/repos/gruntwork-io/terragrunt/releases/latest | jq -r .name )" ; \
+    for i in {1..5}; do curl -LsS \
+        https://github.com/gruntwork-io/terragrunt/releases/download/${VERSION}/terragrunt_linux_${ARCHITECTURE} -o /usr/bin/terragrunt \
+        && break || sleep 15; \
+    done ;\
+    chmod +x /usr/bin/terragrunt
+
+RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
+    DOWNLOAD_URL="$( curl -LsS https://api.github.com/repos/terraform-linters/tflint/releases/latest | grep -o -E "https://.+?_linux_${ARCHITECTURE}.zip" )" ;\
+    for i in {1..5}; do curl -LsS "${DOWNLOAD_URL}" -o ./tflint.zip && break || sleep 15; done ;\
+    unzip ./tflint.zip ;\
+    rm -f ./tflint.zip ;\
+    chmod +x ./tflint ;\
+    mv ./tflint /usr/bin/tflint
+
+RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
+    DOWNLOAD_URL="$( curl -LsS https://api.github.com/repos/minamijoyo/hcledit/releases/latest | grep -o -E "https://.+?_linux_${ARCHITECTURE}.tar.gz" )" ;\
+    for i in {1..5}; do curl -LsS "${DOWNLOAD_URL}" -o ./hcledit.tar.gz && break || sleep 15; done ;\
+    tar -xf ./hcledit.tar.gz ;\
+    rm -f ./hcledit.tar.gz ;\
+    chmod +x ./hcledit ;\
+    chown "$(id -u):$(id -g)" ./hcledit ;\
+    mv ./hcledit /usr/bin/hcledit 
+
+RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
+    DOWNLOAD_URL="$( curl -LsS https://api.github.com/repos/getsops/sops/releases/latest | grep -o -E "https://.+?\.linux.${ARCHITECTURE}" | head -1 )" ;\
+    for i in {1..5}; do curl -LsS "${DOWNLOAD_URL}" -o /usr/bin/sops && break || sleep 15; done ;\
+    chmod +x /usr/bin/sops
+
+RUN xargs -n 1 -a /tmp/pip_requirements.txt pip3 install --no-cache-dir ;\
+    if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=x86_64; elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then ARCHITECTURE=aarch64; else ARCHITECTURE=x86_64; fi ;\
+    for i in {1..5}; do curl -LsS "https://awscli.amazonaws.com/awscli-exe-linux-${ARCHITECTURE}${VERSION}.zip" -o /tmp/awscli.zip && break || sleep 15; done ;\
     mkdir -p /usr/local/awscli ;\
     unzip -q /tmp/awscli.zip -d /usr/local/awscli ;\
     /usr/local/awscli/aws/install
-RUN VERSION="$(curl -LsS https://api.github.com/repos/kubernetes-sigs/aws-iam-authenticator/releases/latest | jq -r .name)"; \
-    VERSION_NUMBER="$(echo "$VERSION" | tr -d 'v')" ;\
-    curl -LsS "https://github.com/kubernetes-sigs/aws-iam-authenticator/releases/download/${VERSION}/aws-iam-authenticator_${VERSION_NUMBER}_linux_${ARCHITECTURE}" -o /usr/local/bin/aws-iam-authenticator ; \
-    chmod +x /usr/local/bin/aws-iam-authenticator
-RUN curl -LsS https://amazon-ecs-cli.s3.amazonaws.com/ecs-cli-linux-amd64-latest -o /usr/local/bin/ecs-cli; \
-    chmod +x /usr/local/bin/ecs-cli
 
 WORKDIR /workspace
 CMD ["/bin/zsh"]
