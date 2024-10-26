@@ -4,4 +4,10 @@ ZSH_THEME="robbyrussell"
 plugins=(git aliases themes aws ansible terraform golang git-extras)
 source $ZSH/oh-my-zsh.sh
 
+alias ll='ls --color=never -l'
+alias la='ls --color=never -la'
+
+# IP addresses
+alias ip="dig +short myip.opendns.com @resolver1.opendns.com"
+
 [[ ! -f ~/.profile ]] || source ~/.profile
