@@ -1,121 +1,88 @@
 ##############################################
 # Functions
 ##############################################
-# Execute "script" command just once
-smart_script(){
-    # if there's no SCRIPT_LOG_FILE exported yet
-    if [ -z "$SCRIPT_LOG_FILE" ]; then
-        # make folder paths
-        logdirparent=~/.logs
-        logdirraw=raw/$(date +%F)
-        logdir=$logdirparent/$logdirraw
-        logfile=$logdir/$(date +%F_%T).$$.rawlog
-
-        # if no folder exist - make one
-        if [ ! -d $logdir ]; then
-            mkdir -p $logdir
-        fi
-
-        export SCRIPT_LOG_FILE=$logfile
-        export SCRIPT_LOG_PARENT_FOLDER=$logdirparent
-
-        # quiet output if no args are passed
-        if [ ! -z "$1" ]; then
-            script -f $logfile
-        else
-            script -f -q $logfile
-        fi
-
-        exit
-    fi
+function log {
+  local -r level="$1"
+  local -r message="$2"
+  local -r timestamp="$(date +"%Y-%m-%d %H:%M:%S")"
+  >&2 echo -e "${timestamp} [${level}] [$SCRIPT_NAME] ${message}"
 }
 
-# Manually saves current log file: $ savelog logname
-savelog(){
-    # make folder path
-    manualdir=$SCRIPT_LOG_PARENT_FOLDER/manual
-    # if no folder exists - make one
-    if [ ! -d $manualdir ]; then
-        mkdir -p $manualdir
-    fi
-    # make log name
-    logname=${SCRIPT_LOG_FILE##*/}
-    logname=${logname%.*}
-    # add user logname if passed as argument
-    if [ ! -z $1 ]; then
-        logname=$logname'_'$1
-    fi
-    # make filepaths
-    txtfile=$manualdir/$logname'.txt'
-    rawfile=$manualdir/$logname'.rawlog'
-    # make .rawlog readable and save it to .txt file
-    cat $SCRIPT_LOG_FILE | perl -pe 's/\e([^\[\]]|\[.*?[a-zA-Z]|\].*?\a)//g' | col -b > $txtfile
-    # copy corresponding .rawfile
-    cp $SCRIPT_LOG_FILE $rawfile
-    printf 'Saved logs:\n    '$txtfile'\n    '$rawfile'\n'
+function log_info {
+  local -r message="$1"
+  log "INFO" "$message"
+}
+
+function log_warn {
+  local -r message="$1"
+  log "WARN" "$message"
+}
+
+function log_error {
+  local -r message="$1"
+  log "ERROR" "$message"
+}
+
+function is_empty {
+  local -r arg="$1"
+
+  if [[ -z "$arg" ]] || [[ "$arg" == "$EMPTY_VAL" ]]; then
+    echo "true"
+  else
+    echo "false"
+  fi
+}
+
+function assert_not_empty {
+  local -r arg_name="$1"
+  local -r arg_value="$2"
+
+  if [[ $(is_empty "$arg_value") == "true" ]]; then
+    log_error "The value for '$arg_name' cannot be empty"
+    print_usage
+    exit 1
+  fi
+}
+
+function assert_is_installed {
+  local -r name="$1"
+
+  if [[ ! "$(command -v "$name")" ]]; then
+    log_error "The binary '$name' is required by this script but is not installed or in the system's PATH."
+    exit 1
+  fi
 }
 
 function cleantf() {
-  location="${HOME}/"
-
-  sudo find ${location} -type f -name ".terraform.lock.hcl" -prune -exec rm -rf {} \;
-  sudo find ${location} -type d -name ".terraform" -prune -exec rm -rf {} \;
-  sudo find ${location} -type d -name ".terragrunt-cache" -prune -exec rm -rf {} \;
-  sudo find ${location} -type f -name "terragrunt_rendered.json" -prune -exec rm -rf {} \;
-}
-
-function tfsum() {
-  # Slurp to combine each separate json object into a single array, raw output for plain strings
-  #
-  # First map filters out the planned changes and builds a smaller object from the addr and action
-  # Group by the actions, to put them in create, delete, read, and update arrays
-  # Second map defines the action as a variable, removes the action from the object, deletes the action
-  #   from each object, pulls the addr string out of the objects, and builds a string for each action group.
-  #
-  # Finally, run the output through another array pull to turn the array of strings into just strings.
-
-  terraform plan -json |
-    jq --slurp --raw-output '
-      map(
-        select(.type == "planned_change") |
-          {
-            addr: .change.resource.addr,
-            action: .change.action
-          }
-      ) |
-      group_by(.action) |
-      map(
-        .[0].action as $action |
-        del (.[].action) |
-        map(.addr) |
-        "\($action) (\(. | length)):\n    \(map(.) | join("\n    "))\n"
-      ) |
-      .[]
-    '
+    find /workspace -type f -name ".terraform.lock.hcl" -prune -exec rm -rf {} \;
+    find /workspace -type d -name ".terraform" -prune -exec rm -rf {} \;
+    find /workspace -type d -name ".terragrunt-cache" -prune -exec rm -rf {} \;
+    find /workspace -type f -name "terragrunt_rendered.json" -prune -exec rm -rf {} \;
+    find /workspace -type f -name "*.tfvars.json" -prune -exec rm -rf {} \;
 }
 
 function aws_account() {
-  aws sts get-caller-identity $@ | jq -r .Account
+    aws sts get-caller-identity $@ | jq -r .Account
 }
 
 function aws_assume_role_arn() {
-  aws sts get-caller-identity $@ | jq -r .Arn
+    aws sts get-caller-identity $@ | jq -r .Arn
 }
 
 function reset-aws() {
-  unset AWS_PROFILE
-  unset AWS_ACCESS_KEY_ID
-  unset AWS_SECRET_ACCESS_KEY
-  unset AWS_SESSION_TOKEN
-  unset AWS_SESSION_EXPIRATION
+    unset AWS_PROFILE
+    unset AWS_ACCESS_KEY_ID
+    unset AWS_SECRET_ACCESS_KEY
+    unset AWS_SESSION_TOKEN
+    unset AWS_SESSION_EXPIRATION
  }
 
- function statels {
+function statels {
     readonly _path=${1}
     aws s3 ls s3://github-mygainwell-acuity-tf-state/${_path}
 }
 
-aws_auth() {
+function get_session_token {
     _role_arn="${1}"
 
     response="$(aws sts assume-role --output json --role-arn ${_role_arn} --role-session-name "$USER" --duration-seconds 3600)"
@@ -135,12 +102,111 @@ aws_auth() {
     echo "export AWS_SESSION_EXPIRATION='$expiration'"
 }
 
-export AWS_DEFAULT_REGION=us-east-1
+function unload_dbx {
+    unset DATABRICKS_CLIENT_ID
+    unset DATABRICKS_CLIENT_SECRET
+    unset DATABRIKCS_ACCOUNT_ID
+}
+
+function get_aws_account_id {
+    local _name="$1"
+
+    case "$_name" in
+        mgmt )  aws_account_id=350828950339 ;;
+        dev  )  aws_account_id=918623739618 ;;
+        stage)  aws_account_id=721214004216 ;;
+        uat  )  aws_account_id=452254429706 ;;
+        prod )  aws_account_id=486777228849 ;;
+        ephem)  aws_account_id=515901079115 ;;
+        demo )  aws_account_id=637842604963 ;;
+        sbx01)  aws_account_id=798001646746 ;;
+        sbx03)  aws_account_id=097211253852 ;;
+        sbx04)  aws_account_id=591161269265 ;;
+        sbx05)  aws_account_id=604471484504 ;;
+        sbx06)  aws_account_id=313878021834 ;;
+        sbx07)  aws_account_id=670104825070 ;;
+        sbx09)  aws_account_id=800782569207 ;;
+        sbx10)  aws_account_id=867659590468 ;;
+    esac
+
+    echo $aws_account_id
+}
+
+function get_env_name {
+    local _account_id="$1"
+
+    case "$_account_id" in
+        350828950339) env_name="mgmt" ;;
+        918623739618) env_name="dev" ;;
+        721214004216) env_name="stage" ;;
+        452254429706) env_name="uat" ;;
+        486777228849) env_name="prod" ;;
+        515901079115) env_name="ephem" ;;
+        637842604963) env_name="sbx01" ;;
+        097211253852) env_name="sbx03" ;;
+        591161269265) env_name="sbx04" ;;
+        604471484504) env_name="sbx05" ;;
+        313878021834) env_name="sbx06" ;;
+        670104825070) env_name="sbx07" ;;
+        800782569207) env_name="sbx09" ;;
+        867659590468) env_name="sbx10" ;;
+    esac
+
+    echo $env_name
+}
+
+function bootstrap {
+    reset-aws
+    credentials
+    account_id=$(get_aws_account_id $1)
+    if [ "$1" = "mgmt" ]; then
+        eval "$(get_session_token --role-arn arn:aws:iam::${account_id}:role/gwt-acuity-bootstrap-role --role-duration-seconds 3600 --role-session-name $SESSION_NAME)"
+    else
+        eval "$(get_session_token --role-arn arn:aws:iam::350828950339:role/gwt-acuity-bootstrap-role --role-duration-seconds 3600 --role-session-name $SESSION_NAME)"
+        eval "$(get_session_token --role-arn arn:aws:iam::${account_id}:role/gwt-acuity-bootstrap-role --role-duration-seconds 3600 --role-session-name $SESSION_NAME)"
+    fi
+}
+
+function live {
+    reset-aws
+    credentials
+    account_id=$(get_aws_account_id $1)
+    if [ "$1" = "mgmt" ]; then
+        eval "$(get_session_token --role-arn arn:aws:iam::${account_id}:role/gwt-acuity-infra-oidc-role --role-duration-seconds 3600 --role-session-name $SESSION_NAME)"
+    else
+        eval "$(get_session_token --role-arn arn:aws:iam::350828950339:role/gwt-acuity-infra-oidc-role --role-duration-seconds 3600 --role-session-name $SESSION_NAME)"
+        eval "$(get_session_token --role-arn arn:aws:iam::${account_id}:role/gwt-acuity-infra-execution-role --role-duration-seconds 3600 --role-session-name $SESSION_NAME)"
+    fi
+}
+
+function portal {
+    reset-aws
+    credentials
+    account_id=$(get_aws_account_id $1)
+    if [ "$1" = "mgmt" ]; then
+        eval "$(get_session_token --role-arn arn:aws:iam::${account_id}:role/gwt-acuity-gw360-oidc-role --role-duration-seconds 3600 --role-session-name $SESSION_NAME)"
+    else
+        eval "$(get_session_token --role-arn arn:aws:iam::350828950339:role/gwt-acuity-gw360-oidc-role --role-duration-seconds 3600 --role-session-name $SESSION_NAME)"
+        eval "$(get_session_token --role-arn arn:aws:iam::${account_id}:role/gwt-acuity-gw360-execution-role --role-duration-seconds 3600 --role-session-name $SESSION_NAME)"
+    fi
+}
+
+export AWS_DEFAULT_OUTPUT="json"
+export AWS_CSM_ENABLED=false
 export AWS_PAGER=""
 export GOROOT=/opt/go
 export GOPATH=/root/.go
 export PATH=$PATH:$GOPATH/bin:$GOROOT/bin
+export SESSION_NAME="v.matukumalli@gainwelltechnologies.com"
 
-alias tgi='terragrunt run-all init'
-alias tgp='terragrunt run-all plan'
-alias tga='terragrunt run-all apply'
+alias pyenv='source /root/venv/bin/activate'
+
+alias tgi='terragrunt init'
+alias tgp='terragrunt plan'
+alias tga='terragrunt apply'
+
+alias tfi='terraform init'
+alias tfp='terraform plan -input=false -no-color'
+alias tfa='terraform apply -input=false -no-color'
+alias tfd='terraform destroy'
+alias tfim='terraform import'
