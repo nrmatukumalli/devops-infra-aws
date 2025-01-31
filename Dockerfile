@@ -44,8 +44,8 @@ RUN wget --progress=dot:giga https://github.com/robbyrussell/oh-my-zsh/raw/maste
 RUN mkdir -p /root/.ssh /opt/go
 COPY root/.zshrc /root/.zshrc
 
-RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 RUN python3 -m venv /root/venv
+RUN /root/venv/bin/pip3 install --no-cache-dir -r /tmp/requirements.txt
 
 RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
     VERSION="$( curl -LsS https://releases.hashicorp.com/terraform/ | grep -Eo '/[.0-9]+/' | grep -Eo '[.0-9]+' | sort -V | tail -1 )" ; \
