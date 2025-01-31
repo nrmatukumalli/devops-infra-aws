@@ -11,6 +11,8 @@ ENV GOPATH=/root/.go
 
 COPY --from=golang:1.21-bullseye /usr/local/go/ /usr/local/go/
 
+COPY requirements.txt /tmp/requirements.txt
+
 SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]
 
 # Install apt repositories
@@ -42,6 +44,7 @@ RUN wget --progress=dot:giga https://github.com/robbyrussell/oh-my-zsh/raw/maste
 RUN mkdir -p /root/.ssh /opt/go
 COPY root/.zshrc /root/.zshrc
 
+RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 RUN python3 -m venv /root/venv
 
 RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\

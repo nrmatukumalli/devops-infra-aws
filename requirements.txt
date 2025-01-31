@@ -1,0 +1,4 @@
+boto3==1.36.10
+python-hcl2==6.1.0
+requests==2.32.3
+ansible==11.2.0
