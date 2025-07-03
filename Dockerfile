@@ -41,6 +41,10 @@ RUN apt-get update -y; \
 
 RUN wget --progress=dot:giga https://github.com/robbyrussell/oh-my-zsh/raw/master/tools/install.sh -O - | zsh || true
 
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs && \
+    node -v && npm -v
+
 RUN mkdir -p /root/.ssh /opt/go
 COPY root/.zshrc /root/.zshrc
 COPY root/dbxcli.sh /tmp/dbxcli.sh
