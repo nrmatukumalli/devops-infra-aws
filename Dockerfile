@@ -35,7 +35,7 @@ RUN apt-get update -y; \
     tar \
     zsh \
     python3.12-venv \
-    openssh \
+    openssh-client \
     gzip; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*
