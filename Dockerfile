@@ -1,4 +1,4 @@
-FROM public.ecr.aws/ubuntu/ubuntu:24.04_stable
+FROM public.ecr.aws/ubuntu/ubuntu:24.10_stable
 
 ARG TARGETPLATFORM=linux/amd64
 
