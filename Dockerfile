@@ -1,6 +1,8 @@
-FROM public.ecr.aws/ubuntu/ubuntu:24.10_stable
+FROM --platform=$BUILDPLATFORM public.ecr.aws/ubuntu/ubuntu:24.10_stable
 
-ARG TARGETPLATFORM=linux/amd64
+
+ARG TARGETARCH
+ENV DEBIAN_FRONTEND=noninteractive
 
 ARG AWSCLI_VERSION=latest
 ARG TFCLI_VERSION=latest
@@ -54,7 +56,8 @@ RUN python3 -m venv /root/venv
 RUN /root/venv/bin/pip3 install --no-cache-dir -r /tmp/requirements.txt
 RUN /tmp/dbxcli.sh
 
-RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
+# Install Terraform
+RUN if [ "${TARGETARCH}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETARCH}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
     VERSION="$( curl -LsS https://releases.hashicorp.com/terraform/ | grep -Eo '/[.0-9]+/' | grep -Eo '[.0-9]+' | sort -V | tail -1 )" ; \
     for i in {1..5}; do curl -LsS \
         https://releases.hashicorp.com/terraform/${VERSION}/terraform_${VERSION}_linux_${ARCHITECTURE}.zip -o ./terraform.zip \
@@ -65,7 +68,9 @@ RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ 
     chmod +x ./terraform ; \
     mv ./terraform /usr/bin/terraform
 
-RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
+
+# Install Terragrunt
+RUN if [ "${TARGETARCH}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETARCH}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
     VERSION="$( curl -LsS https://api.github.com/repos/gruntwork-io/terragrunt/releases/latest | jq -r .name )" ; \
     for i in {1..5}; do curl -LsS \
         https://github.com/gruntwork-io/terragrunt/releases/download/${VERSION}/terragrunt_linux_${ARCHITECTURE} -o /usr/bin/terragrunt \
@@ -73,7 +78,7 @@ RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ 
     done ;\
     chmod +x /usr/bin/terragrunt
 
-RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
+RUN if [ "${TARGETARCH}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETARCH}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
     DOWNLOAD_URL=$( curl -LsS https://api.github.com/repos/terraform-linters/tflint/releases/latest | grep -o -E "https://.+?_linux_${ARCHITECTURE}.zip" ) ;\
     for i in {1..5}; do curl -LsS "${DOWNLOAD_URL}" -o ./tflint.zip && break || sleep 15; done ;\
     unzip ./tflint.zip ;\
@@ -81,7 +86,7 @@ RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ 
     chmod +x ./tflint ;\
     mv ./tflint /usr/bin/tflint
 
-RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
+RUN if [ "${TARGETARCH}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETARCH}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
     DOWNLOAD_URL=$( curl -LsS https://api.github.com/repos/minamijoyo/hcledit/releases/latest | grep -o -E "https://.+?_linux_${ARCHITECTURE}.tar.gz" ) ;\
     for i in {1..5}; do curl -LsS "${DOWNLOAD_URL}" -o ./hcledit.tar.gz && break || sleep 15; done ;\
     tar -xf ./hcledit.tar.gz ;\
@@ -90,12 +95,12 @@ RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ 
     chown "$(id -u):$(id -g)" ./hcledit ;\
     mv ./hcledit /usr/bin/hcledit 
 
-RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
+RUN if [ "${TARGETARCH}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETARCH}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
     DOWNLOAD_URL=$( curl -LsS https://api.github.com/repos/getsops/sops/releases/latest | grep -o -E "https://.+?\.linux.${ARCHITECTURE}" | head -1 ) ;\
     for i in {1..5}; do curl -LsS "${DOWNLOAD_URL}" -o /usr/bin/sops && break || sleep 15; done ;\
     chmod +x /usr/bin/sops
 
-RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=x86_64; elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then ARCHITECTURE=aarch64; else ARCHITECTURE=x86_64; fi ;\
+RUN if [ "${TARGETARCH}" = "linux/amd64" ]; then ARCHITECTURE=x86_64; elif [ "${TARGETARCH}" = "linux/arm64" ]; then ARCHITECTURE=aarch64; else ARCHITECTURE=x86_64; fi ;\
     for i in {1..5}; do curl -LsS "https://awscli.amazonaws.com/awscli-exe-linux-${ARCHITECTURE}.zip" -o /tmp/awscli.zip && break || sleep 15; done ;\
     mkdir -p /usr/local/awscli ;\
     unzip -q /tmp/awscli.zip -d /usr/local/awscli ;\
