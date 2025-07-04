@@ -1,105 +1,57 @@
-FROM public.ecr.aws/ubuntu/ubuntu:24.10_stable
+FROM --platform=$BUILDPLATFORM alpine:3.20
 
-ARG TARGETPLATFORM=linux/amd64
-
-ARG AWSCLI_VERSION=latest
-ARG TFCLI_VERSION=latest
-ARG TGCLI_VERSION=latest
+ARG TARGETARCH
+ENV DEBIAN_FRONTEND=noninteractive
+ENV GO_VERSION=1.22.3
+ENV TERRAFORM_VERSION=1.8.5
+ENV TERRAGRUNT_VERSION=0.56.3
+ENV TFLINT_VERSION=0.50.3
+ENV SOPS_VERSION=3.8.1
 
 ENV GOROOT=/opt/go
 ENV GOPATH=/root/.go
 
-COPY --from=golang:1.21-bullseye /usr/local/go/ /usr/local/go/
+# Instal Base Packages
+RUN apk add --no-cache \
+    bash curl unzip zip gzip tar jq zsh openssh \
+    python3 py3-pip build-base git go nodejs npm bind-tools
 
-COPY requirements.txt /tmp/requirements.txt
+# Install AWS CLI
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-${TARGETARCH}.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && ./aws/install && rm -rf awscliv2.zip aws
 
-SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]
+# Install Ansible
+RUN pip3 install ansible boto3 requests
 
-# Install apt repositories
-RUN apt-get update -y; \
-    apt-get upgrade -y; \
-    apt-get --no-install-recommends install -y \
-    ca-certificates \
-    wget \
-    curl \
-    git \
-    jq \
-    vim \
-    unzip \
-    python3 \
-    python3-pip \
-    zip \
-    golang-go \
-    zsh \
-    dnsutils \
-    tar \
-    zsh \
-    python3.12-venv \
-    openssh-client \
-    gzip; \
-    apt-get clean; \
-    rm -rf /var/lib/apt/lists/*
+# Install Terraform
+RUN curl -fsSL https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_${TARGETARCH}.zip -o terraform.zip && \
+    unzip terraform.zip && mv terraform /usr/local/bin/ && rm terraform.zip
 
-RUN wget --progress=dot:giga https://github.com/robbyrussell/oh-my-zsh/raw/master/tools/install.sh -O - | zsh || true
+# Install Terragrunt
+RUN curl -fsSL https://github.com/gruntwork-io/terragrunt/releases/download/v${TERRAGRUNT_VERSION}/terragrunt_linux_${TARGETARCH} -o /usr/local/bin/terragrunt && \
+    chmod +x /usr/local/bin/terragrunt
 
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
-    apt-get install -y nodejs && \
-    node -v && npm -v
+# Install TFLint
+RUN curl -fsSL https://github.com/terraform-linters/tflint/releases/download/v${TFLINT_VERSION}/tflint_linux_${TARGETARCH}.zip -o tflint.zip && \
+    unzip tflint.zip && mv tflint /usr/local/bin/ && rm tflint.zip
+
+# Install hcl2json and hcledit
+RUN go install github.com/tmccombs/hcl2json@latest && \
+    go install github.com/minamijoyo/hcledit@latest && \
+    cp /root/go/bin/* /usr/local/bin/
+
+# Install SOPS
+RUN curl -fsSL https://github.com/mozilla/sops/releases/download/v${SOPS_VERSION}/sops-v${SOPS_VERSION}.linux.${TARGETARCH} -o /usr/local/bin/sops && \
+    chmod +x /usr/local/bin/sops
 
 RUN mkdir -p /root/.ssh /opt/go
 COPY root/.zshrc /root/.zshrc
 COPY root/dbxcli.sh /tmp/dbxcli.sh
 
-RUN python3 -m venv /root/venv
-RUN /root/venv/bin/pip3 install --no-cache-dir -r /tmp/requirements.txt
 RUN /tmp/dbxcli.sh
 
-RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
-    VERSION="$( curl -LsS https://releases.hashicorp.com/terraform/ | grep -Eo '/[.0-9]+/' | grep -Eo '[.0-9]+' | sort -V | tail -1 )" ; \
-    for i in {1..5}; do curl -LsS \
-        https://releases.hashicorp.com/terraform/${VERSION}/terraform_${VERSION}_linux_${ARCHITECTURE}.zip -o ./terraform.zip \
-        && break || sleep 15; \
-    done ; \
-    unzip ./terraform.zip ; \
-    rm -f ./terraform.zip ; \
-    chmod +x ./terraform ; \
-    mv ./terraform /usr/bin/terraform
-
-RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
-    VERSION="$( curl -LsS https://api.github.com/repos/gruntwork-io/terragrunt/releases/latest | jq -r .name )" ; \
-    for i in {1..5}; do curl -LsS \
-        https://github.com/gruntwork-io/terragrunt/releases/download/${VERSION}/terragrunt_linux_${ARCHITECTURE} -o /usr/bin/terragrunt \
-        && break || sleep 15; \
-    done ;\
-    chmod +x /usr/bin/terragrunt
-
-RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
-    DOWNLOAD_URL=$( curl -LsS https://api.github.com/repos/terraform-linters/tflint/releases/latest | grep -o -E "https://.+?_linux_${ARCHITECTURE}.zip" ) ;\
-    for i in {1..5}; do curl -LsS "${DOWNLOAD_URL}" -o ./tflint.zip && break || sleep 15; done ;\
-    unzip ./tflint.zip ;\
-    rm -f ./tflint.zip ;\
-    chmod +x ./tflint ;\
-    mv ./tflint /usr/bin/tflint
-
-RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
-    DOWNLOAD_URL=$( curl -LsS https://api.github.com/repos/minamijoyo/hcledit/releases/latest | grep -o -E "https://.+?_linux_${ARCHITECTURE}.tar.gz" ) ;\
-    for i in {1..5}; do curl -LsS "${DOWNLOAD_URL}" -o ./hcledit.tar.gz && break || sleep 15; done ;\
-    tar -xf ./hcledit.tar.gz ;\
-    rm -f ./hcledit.tar.gz ;\
-    chmod +x ./hcledit ;\
-    chown "$(id -u):$(id -g)" ./hcledit ;\
-    mv ./hcledit /usr/bin/hcledit 
-
-RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
-    DOWNLOAD_URL=$( curl -LsS https://api.github.com/repos/getsops/sops/releases/latest | grep -o -E "https://.+?\.linux.${ARCHITECTURE}" | head -1 ) ;\
-    for i in {1..5}; do curl -LsS "${DOWNLOAD_URL}" -o /usr/bin/sops && break || sleep 15; done ;\
-    chmod +x /usr/bin/sops
-
-RUN if [ "${TARGETPLATFORM}" = "linux/amd64" ]; then ARCHITECTURE=x86_64; elif [ "${TARGETPLATFORM}" = "linux/arm64" ]; then ARCHITECTURE=aarch64; else ARCHITECTURE=x86_64; fi ;\
-    for i in {1..5}; do curl -LsS "https://awscli.amazonaws.com/awscli-exe-linux-${ARCHITECTURE}.zip" -o /tmp/awscli.zip && break || sleep 15; done ;\
-    mkdir -p /usr/local/awscli ;\
-    unzip -q /tmp/awscli.zip -d /usr/local/awscli ;\
-    /usr/local/awscli/aws/install
+# Clean up
+RUN rm -rf /var/cache/apk/* /tmp/*
 
 WORKDIR /workspace
 CMD ["/bin/zsh"]
