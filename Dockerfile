@@ -1,110 +1,70 @@
-FROM --platform=$BUILDPLATFORM public.ecr.aws/ubuntu/ubuntu:24.10_stable
+# Use Rocky Linux as the base image
+FROM rockylinux:latest
 
+# Set environment variables
+ENV PYTHON_VERSION=3.12.0 \
+    GO_VERSION=1.21.1 \
+    TERRAFORM_VERSION=1.5.7 \
+    TERRAGRUNT_VERSION=0.50.3 \
+    TFLINT_VERSION=0.48.0
 
-ARG TARGETARCH
-ENV DEBIAN_FRONTEND=noninteractive
+# Update system and install dependencies
+RUN dnf update -y && \
+    dnf groupinstall -y "Development Tools" && \
+    dnf install -y gcc gcc-c++ make wget curl unzip tar git libffi-devel bzip2 bzip2-devel zlib-devel xz-devel ansible && \
+    dnf clean all
 
-ARG AWSCLI_VERSION=latest
-ARG TFCLI_VERSION=latest
-ARG TGCLI_VERSION=latest
+# Install Python 3.12
+#RUN wget https://www.python.org/ftp/python/$PYTHON_VERSION/Python-$PYTHON_VERSION.tgz && \
+#    tar xvf Python-$PYTHON_VERSION.tgz && \
+#    cd Python-$PYTHON_VERSION && \
+#    ./configure --enable-optimizations && \
+#    make -j$(nproc) && \
+#    make altinstall && \
+#    cd .. && \
+#    rm -rf Python-$PYTHON_VERSION Python-$PYTHON_VERSION.tgz
 
-ENV GOROOT=/opt/go
-ENV GOPATH=/root/.go
+# Install Python libraries
+#RUN pip3.12 install --upgrade pip && \
+#    pip3.12 install boto3 requests
 
-COPY --from=golang:1.21-bullseye /usr/local/go/ /usr/local/go/
+# Install Go (Golang)
+#RUN ARCH=$(uname -m) && \
+#    if [ "$ARCH" == "x86_64" ]; then GO_ARCH="amd64"; elif [ "$ARCH" == "aarch64" ]; then GO_ARCH="arm64"; else exit 1; fi && \
+#    wget https://go.dev/dl/go$GO_VERSION.linux-$GO_ARCH.tar.gz && \
+#    tar -C /usr/local -xzf go$GO_VERSION.linux-$GO_ARCH.tar.gz && \
+#    rm -f go$GO_VERSION.linux-$GO_ARCH.tar.gz && \
+#    echo "export PATH=\$PATH:/usr/local/go/bin" >> /etc/profile
 
-COPY requirements.txt /tmp/requirements.txt
-
-SHELL ["/bin/bash", "-euxo", "pipefail", "-c"]
-
-# Install apt repositories
-RUN apt-get update -y; \
-    apt-get upgrade -y; \
-    apt-get --no-install-recommends install -y \
-    ca-certificates \
-    wget \
-    curl \
-    git \
-    jq \
-    vim \
-    unzip \
-    python3 \
-    python3-pip \
-    zip \
-    golang-go \
-    zsh \
-    dnsutils \
-    tar \
-    zsh \
-    python3.12-venv \
-    openssh-client \
-    gzip; \
-    apt-get clean; \
-    rm -rf /var/lib/apt/lists/*
-
-RUN wget --progress=dot:giga https://github.com/robbyrussell/oh-my-zsh/raw/master/tools/install.sh -O - | zsh || true
-
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
-    apt-get install -y nodejs && \
-    node -v && npm -v
-
-RUN mkdir -p /root/.ssh /opt/go
-COPY root/.zshrc /root/.zshrc
-COPY root/dbxcli.sh /tmp/dbxcli.sh
-
-RUN python3 -m venv /root/venv
-RUN /root/venv/bin/pip3 install --no-cache-dir -r /tmp/requirements.txt
-RUN /tmp/dbxcli.sh
+# Install hcl2json
+#RUN /usr/local/go/bin/go install github.com/tmccombs/hcl2json@latest && \
+#    mv /root/go/bin/hcl2json /usr/local/bin/
 
 # Install Terraform
-RUN if [ "${TARGETARCH}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETARCH}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
-    VERSION="$( curl -LsS https://releases.hashicorp.com/terraform/ | grep -Eo '/[.0-9]+/' | grep -Eo '[.0-9]+' | sort -V | tail -1 )" ; \
-    for i in {1..5}; do curl -LsS \
-        https://releases.hashicorp.com/terraform/${VERSION}/terraform_${VERSION}_linux_${ARCHITECTURE}.zip -o ./terraform.zip \
-        && break || sleep 15; \
-    done ; \
-    unzip ./terraform.zip ; \
-    rm -f ./terraform.zip ; \
-    chmod +x ./terraform ; \
-    mv ./terraform /usr/bin/terraform
-
+#RUN ARCH=$(uname -m) && \
+#    if [ "$ARCH" == "x86_64" ]; then GO_ARCH="amd64"; elif [ "$ARCH" == "aarch64" ]; then GO_ARCH="arm64"; else exit 1; fi && \
+#    wget https://releases.hashicorp.com/terraform/$TERRAFORM_VERSION/terraform_$TERRAFORM_VERSION_linux_$GO_ARCH.zip && \
+#    unzip terraform_$TERRAFORM_VERSION_linux_$GO_ARCH.zip && \
+#    mv terraform /usr/local/bin/ && \
+#    rm -f terraform_$TERRAFORM_VERSION_linux_$GO_ARCH.zip
 
 # Install Terragrunt
-RUN if [ "${TARGETARCH}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETARCH}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
-    VERSION="$( curl -LsS https://api.github.com/repos/gruntwork-io/terragrunt/releases/latest | jq -r .name )" ; \
-    for i in {1..5}; do curl -LsS \
-        https://github.com/gruntwork-io/terragrunt/releases/download/${VERSION}/terragrunt_linux_${ARCHITECTURE} -o /usr/bin/terragrunt \
-        && break || sleep 15; \
-    done ;\
-    chmod +x /usr/bin/terragrunt
+#RUN ARCH=$(uname -m) && \
+#    if [ "$ARCH" == "x86_64" ]; then GO_ARCH="amd64"; elif [ "$ARCH" == "aarch64" ]; then GO_ARCH="arm64"; else exit 1; fi && \
+#    wget https://github.com/gruntwork-io/terragrunt/releases/download/v$TERRAGRUNT_VERSION/terragrunt_linux_$GO_ARCH && \
+#    mv terragrunt_linux_$GO_ARCH /usr/local/bin/terragrunt && \
+#    chmod +x /usr/local/bin/terragrunt
 
-RUN if [ "${TARGETARCH}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETARCH}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
-    DOWNLOAD_URL=$( curl -LsS https://api.github.com/repos/terraform-linters/tflint/releases/latest | grep -o -E "https://.+?_linux_${ARCHITECTURE}.zip" ) ;\
-    for i in {1..5}; do curl -LsS "${DOWNLOAD_URL}" -o ./tflint.zip && break || sleep 15; done ;\
-    unzip ./tflint.zip ;\
-    rm -f ./tflint.zip ;\
-    chmod +x ./tflint ;\
-    mv ./tflint /usr/bin/tflint
+# Install TFLint
+#RUN ARCH=$(uname -m) && \
+#    if [ "$ARCH" == "x86_64" ]; then GO_ARCH="amd64"; elif [ "$ARCH" == "aarch64" ]; then GO_ARCH="arm64"; else exit 1; fi && \
+#    wget https://github.com/terraform-linters/tflint/releases/download/v$TFLINT_VERSION/tflint_linux_$GO_ARCH.zip && \
+#    unzip tflint_linux_$GO_ARCH.zip && \
+#    mv tflint /usr/local/bin/ && \
+#    rm -f tflint_linux_$GO_ARCH.zip
 
-RUN if [ "${TARGETARCH}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETARCH}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
-    DOWNLOAD_URL=$( curl -LsS https://api.github.com/repos/minamijoyo/hcledit/releases/latest | grep -o -E "https://.+?_linux_${ARCHITECTURE}.tar.gz" ) ;\
-    for i in {1..5}; do curl -LsS "${DOWNLOAD_URL}" -o ./hcledit.tar.gz && break || sleep 15; done ;\
-    tar -xf ./hcledit.tar.gz ;\
-    rm -f ./hcledit.tar.gz ;\
-    chmod +x ./hcledit ;\
-    chown "$(id -u):$(id -g)" ./hcledit ;\
-    mv ./hcledit /usr/bin/hcledit 
+# Set PATH for Go
+#ENV PATH="/usr/local/go/bin:$PATH"
 
-RUN if [ "${TARGETARCH}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETARCH}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
-    DOWNLOAD_URL=$( curl -LsS https://api.github.com/repos/getsops/sops/releases/latest | grep -o -E "https://.+?\.linux.${ARCHITECTURE}" | head -1 ) ;\
-    for i in {1..5}; do curl -LsS "${DOWNLOAD_URL}" -o /usr/bin/sops && break || sleep 15; done ;\
-    chmod +x /usr/bin/sops
-
-RUN if [ "${TARGETARCH}" = "linux/amd64" ]; then ARCHITECTURE=x86_64; elif [ "${TARGETARCH}" = "linux/arm64" ]; then ARCHITECTURE=aarch64; else ARCHITECTURE=x86_64; fi ;\
-    for i in {1..5}; do curl -LsS "https://awscli.amazonaws.com/awscli-exe-linux-${ARCHITECTURE}.zip" -o /tmp/awscli.zip && break || sleep 15; done ;\
-    mkdir -p /usr/local/awscli ;\
-    unzip -q /tmp/awscli.zip -d /usr/local/awscli ;\
-    /usr/local/awscli/aws/install
-
-WORKDIR /workspace
-CMD ["/bin/zsh"]
+# Default command
+CMD ["/bin/bash"]
