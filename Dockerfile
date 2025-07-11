@@ -1,6 +1,8 @@
 # Use Rocky Linux as the base image
 FROM rockylinux:9.3
 
+ARG TARGETARCH
+
 # Set environment variables
 ENV PYTHON_VERSION=3.12.0 \
     GO_VERSION=1.21.1 \
@@ -11,7 +13,11 @@ ENV PYTHON_VERSION=3.12.0 \
 # Update system and install dependencies
 RUN dnf update -y && \
     dnf groupinstall -y "Development Tools" && \
-    dnf install -y gcc gcc-c++ make wget unzip tar git libffi-devel bzip2 bzip2-devel zlib-devel xz-devel python3.12 python3-pip golang && \
+    dnf install -y \
+        gcc gcc-c++ make wget unzip tar git \
+        libffi-devel bzip2 bzip2-devel zlib-devel \
+        xz-devel python3.12 python3-pip golang jq \
+        zsh bind-utils && \
     dnf clean all
 
 # Install Python libraries
@@ -24,7 +30,7 @@ RUN go install github.com/tmccombs/hcl2json@latest && \
 
 # Install Terraform
 RUN ARCH=$(uname -m) && \
-    if [ "$ARCH" == "x86_64" ]; then GO_ARCH="amd64"; elif [ "$ARCH" == "aarch64" ]; then GO_ARCH="arm64"; else exit 1; fi && \
+    if [ "$TARGETARCH" == "linux/amd64" ]; then GO_ARCH="amd64"; elif [ "$TARGETARCH" == "linux/arm64" ]; then GO_ARCH="arm64"; else exit 1; fi && \
     wget https://releases.hashicorp.com/terraform/$TERRAFORM_VERSION/terraform_$TERRAFORM_VERSION_linux_$GO_ARCH.zip && \
     unzip terraform_$TERRAFORM_VERSION_linux_$GO_ARCH.zip && \
     mv terraform /usr/local/bin/ && \
