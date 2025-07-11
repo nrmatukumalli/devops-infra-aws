@@ -19,16 +19,16 @@ RUN pip3 install --upgrade pip && \
     pip3 install boto3 requests ansible
 
 # Install hcl2json
-RUN /usr/local/go/bin/go install github.com/tmccombs/hcl2json@latest && \
+RUN go install github.com/tmccombs/hcl2json@latest && \
     mv /root/go/bin/hcl2json /usr/local/bin/
 
 # Install Terraform
-#RUN ARCH=$(uname -m) && \
-#    if [ "$ARCH" == "x86_64" ]; then GO_ARCH="amd64"; elif [ "$ARCH" == "aarch64" ]; then GO_ARCH="arm64"; else exit 1; fi && \
-#    wget https://releases.hashicorp.com/terraform/$TERRAFORM_VERSION/terraform_$TERRAFORM_VERSION_linux_$GO_ARCH.zip && \
-#    unzip terraform_$TERRAFORM_VERSION_linux_$GO_ARCH.zip && \
-#    mv terraform /usr/local/bin/ && \
-#    rm -f terraform_$TERRAFORM_VERSION_linux_$GO_ARCH.zip
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" == "x86_64" ]; then GO_ARCH="amd64"; elif [ "$ARCH" == "aarch64" ]; then GO_ARCH="arm64"; else exit 1; fi && \
+    wget https://releases.hashicorp.com/terraform/$TERRAFORM_VERSION/terraform_$TERRAFORM_VERSION_linux_$GO_ARCH.zip && \
+    unzip terraform_$TERRAFORM_VERSION_linux_$GO_ARCH.zip && \
+    mv terraform /usr/local/bin/ && \
+    rm -f terraform_$TERRAFORM_VERSION_linux_$GO_ARCH.zip
 
 # Install Terragrunt
 #RUN ARCH=$(uname -m) && \
