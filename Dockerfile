@@ -11,7 +11,7 @@ ENV PYTHON_VERSION=3.12.0 \
 # Update system and install dependencies
 RUN dnf update -y && \
     dnf groupinstall -y "Development Tools" && \
-    dnf install -y gcc gcc-c++ make wget curl unzip tar git libffi-devel bzip2 bzip2-devel zlib-devel xz-devel && \
+    dnf install -y gcc gcc-c++ make wget unzip tar git libffi-devel bzip2 bzip2-devel zlib-devel xz-devel && \
     dnf clean all
 
 # Install Python 3.12
