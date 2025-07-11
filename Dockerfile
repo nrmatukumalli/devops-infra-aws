@@ -31,10 +31,12 @@ RUN go install github.com/tmccombs/hcl2json@latest && \
 
 # Install Terraform
 RUN if [ "$TARGETARCH" == "linux/amd64" ]; then GO_ARCH="amd64"; elif [ "$TARGETARCH" == "linux/arm64" ]; then GO_ARCH="arm64"; else exit 1; fi && \
-    wget https://releases.hashicorp.com/terraform/$TERRAFORM_VERSION/terraform_${TERRAFORM_VERSION}_linux_$GO_ARCH.zip && \
-    unzip terraform_${TERRAFORM_VERSION}_linux_$GO_ARCH.zip && \
+    echo $TERRAFOM_VERSION && \
+    echo $GO_ARCH && \
+    wget https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_${GO_ARCH}.zip && \
+    unzip terraform_${TERRAFORM_VERSION}_linux_${GO_ARCH}.zip && \
     mv terraform /usr/local/bin/ && \
-    rm -f terraform_${TERRAFORM_VERSION}_linux_$GO_ARCH.zip
+    rm -f terraform_${TERRAFORM_VERSION}_linux_${GO_ARCH}.zip
 
 # Install Terragrunt
 RUN if [ "$TARGETARCH" == "linux/amd64" ]; then GO_ARCH="amd64"; elif [ "$TARGETARCH" == "linux/arm64" ]; then GO_ARCH="arm64"; else exit 1; fi && \
