@@ -15,8 +15,8 @@ RUN dnf update -y && \
     dnf clean all
 
 # Install Python libraries
-RUN pip3.12 install --upgrade pip && \
-    pip3.12 install boto3 requests ansible
+RUN pip3 install --upgrade pip && \
+    pip3 install boto3 requests ansible
 
 # Install hcl2json
 RUN /usr/local/go/bin/go install github.com/tmccombs/hcl2json@latest && \
