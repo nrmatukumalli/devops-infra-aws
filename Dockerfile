@@ -29,8 +29,7 @@ RUN go install github.com/tmccombs/hcl2json@latest && \
     mv /root/go/bin/hcl2json /usr/local/bin/
 
 # Install Terraform
-RUN ARCH=$(uname -m) && \
-    if [ "$TARGETARCH" == "linux/amd64" ]; then GO_ARCH="amd64"; elif [ "$TARGETARCH" == "linux/arm64" ]; then GO_ARCH="arm64"; else exit 1; fi && \
+RUN if [ "$TARGETARCH" == "linux/amd64" ]; then GO_ARCH="amd64"; elif [ "$TARGETARCH" == "linux/arm64" ]; then GO_ARCH="arm64"; else exit 1; fi && \
     wget https://releases.hashicorp.com/terraform/$TERRAFORM_VERSION/terraform_$TERRAFORM_VERSION_linux_$GO_ARCH.zip && \
     unzip terraform_$TERRAFORM_VERSION_linux_$GO_ARCH.zip && \
     mv terraform /usr/local/bin/ && \
