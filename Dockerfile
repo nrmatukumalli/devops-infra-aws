@@ -1,5 +1,5 @@
 # Use Rocky Linux as the base image
-FROM rockylinux:latest
+FROM rockylinux:9.3
 
 # Set environment variables
 ENV PYTHON_VERSION=3.12.0 \
