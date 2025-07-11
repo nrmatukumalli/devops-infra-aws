@@ -6,9 +6,9 @@ ARG TARGETARCH
 # Set environment variables
 ENV PYTHON_VERSION=3.12.0 \
     GO_VERSION=1.21.1 \
-    TERRAFORM_VERSION=1.5.7 \
-    TERRAGRUNT_VERSION=0.50.3 \
-    TFLINT_VERSION=0.48.0
+    TERRAFORM_VERSION=1.12.2 \
+    TERRAGRUNT_VERSION=0.83.1 \
+    TFLINT_VERSION=0.58.0
 
 # Update system and install dependencies
 RUN dnf update -y && \
@@ -64,13 +64,10 @@ RUN if [ "${TARGETARCH}" = "linux/amd64" ]; then ARCHITECTURE=x86_64; elif [ "${
 
 RUN wget --progress=dot:giga https://github.com/robbyrussell/oh-my-zsh/raw/master/tools/install.sh -O - | zsh || true
 
+RUN mkdir /root/.ssh/ /root/.local/bin /root/profile.d
 COPY root/.zshrc /root/.zshrc
 COPY root/dbxcli.sh /tmp/dbxcli.sh
 RUN /tmp/dbxcli.sh
-
-
-# Set PATH for Go
-#ENV PATH="/usr/local/go/bin:$PATH"
 
 WORKDIR /workspace
 CMD ["/bin/zsh"]

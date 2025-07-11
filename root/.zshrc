@@ -1,7 +1,7 @@
 # Path to your oh-my-zsh installation.
 export ZSH="/root/.oh-my-zsh"
 
-ZSH_THEME="robbyrussell"
+ZSH_THEME="philips"
 plugins=(git aliases themes aws ansible terraform golang git-extras)
 source $ZSH/oh-my-zsh.sh
 
@@ -11,6 +11,6 @@ alias ll='ls --color=never -l'
 alias la='ls --color=never -la'
 
 # IP addresses
-alias ip="dig +short myip.opendns.com @resolver1.opendns.com"
+alias myipip="dig +short myip.opendns.com @resolver1.opendns.com"
 
-export PATH=$PATH:/usr/local/bin:/root/profile/:/root/utils
+export PATH=$PATH:/usr/local/bin:/root/.local/bin:/root/profile.d
