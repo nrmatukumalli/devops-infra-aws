@@ -36,19 +36,17 @@ RUN if [ "$TARGETARCH" == "linux/amd64" ]; then GO_ARCH="amd64"; elif [ "$TARGET
     rm -f terraform_${TERRAFORM_VERSION}_linux_$GO_ARCH.zip
 
 # Install Terragrunt
-#RUN ARCH=$(uname -m) && \
-#    if [ "$ARCH" == "x86_64" ]; then GO_ARCH="amd64"; elif [ "$ARCH" == "aarch64" ]; then GO_ARCH="arm64"; else exit 1; fi && \
-#    wget https://github.com/gruntwork-io/terragrunt/releases/download/v$TERRAGRUNT_VERSION/terragrunt_linux_$GO_ARCH && \
-#    mv terragrunt_linux_$GO_ARCH /usr/local/bin/terragrunt && \
-#    chmod +x /usr/local/bin/terragrunt
+RUN if [ "$TARGETARCH" == "linux/amd64" ]; then GO_ARCH="amd64"; elif [ "$TARGETARCH" == "linux/arm64" ]; then GO_ARCH="arm64"; else exit 1; fi && \
+    wget https://github.com/gruntwork-io/terragrunt/releases/download/v${TERRAGRUNT_VERSION}/terragrunt_linux_$GO_ARCH && \
+    mv terragrunt_linux_$GO_ARCH /usr/local/bin/terragrunt && \
+    chmod +x /usr/local/bin/terragrunt
 
 # Install TFLint
-#RUN ARCH=$(uname -m) && \
-#    if [ "$ARCH" == "x86_64" ]; then GO_ARCH="amd64"; elif [ "$ARCH" == "aarch64" ]; then GO_ARCH="arm64"; else exit 1; fi && \
-#    wget https://github.com/terraform-linters/tflint/releases/download/v$TFLINT_VERSION/tflint_linux_$GO_ARCH.zip && \
-#    unzip tflint_linux_$GO_ARCH.zip && \
-#    mv tflint /usr/local/bin/ && \
-#    rm -f tflint_linux_$GO_ARCH.zip
+RUN if [ "$TARGETARCH" == "linux/amd64" ]; then GO_ARCH="amd64"; elif [ "$TARGETARCH" == "linux/arm64" ]; then GO_ARCH="arm64"; else exit 1; fi && \
+    wget https://github.com/terraform-linters/tflint/releases/download/v${TFLINT_VERSION}/tflint_linux_$GO_ARCH.zip && \
+    unzip tflint_linux_$GO_ARCH.zip && \
+    mv tflint /usr/local/bin/ && \
+    rm -f tflint_linux_$GO_ARCH.zip
 
 # Set PATH for Go
 #ENV PATH="/usr/local/go/bin:$PATH"
