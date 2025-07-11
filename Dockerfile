@@ -21,8 +21,9 @@ RUN dnf update -y && \
     dnf clean all
 
 # Install Python libraries
-RUN pip3 install --upgrade pip && \
-    pip3 install boto3 requests ansible
+RUN python3.12 -m venv /root/venv
+RUN /root/venv/bin/pip3 install --upgrade pip && \
+    /root/venv/bin/pip3 install boto3 requests ansible
 
 # Install hcl2json
 RUN go install github.com/tmccombs/hcl2json@latest && \
@@ -48,8 +49,25 @@ RUN if [ "$TARGETARCH" == "linux/amd64" ]; then GO_ARCH="amd64"; elif [ "$TARGET
     mv tflint /usr/local/bin/ && \
     rm -f tflint_linux_$GO_ARCH.zip
 
+# Install SOPS
+RUN if [ "${TARGETARCH}" = "linux/amd64" ]; then ARCHITECTURE=amd64; elif [ "${TARGETARCH}" = "linux/arm64" ]; then ARCHITECTURE=arm64; else ARCHITECTURE=amd64; fi ;\
+    DOWNLOAD_URL=$( curl -LsS https://api.github.com/repos/getsops/sops/releases/latest | grep -o -E "https://.+?\.linux.${ARCHITECTURE}" | head -1 ) ;\
+    for i in {1..5}; do curl -LsS "${DOWNLOAD_URL}" -o /usr/bin/sops && break || sleep 15; done ;\
+    chmod +x /usr/bin/sops
+
+# Install AWS CLI
+RUN if [ "${TARGETARCH}" = "linux/amd64" ]; then ARCHITECTURE=x86_64; elif [ "${TARGETARCH}" = "linux/arm64" ]; then ARCHITECTURE=aarch64; else ARCHITECTURE=x86_64; fi ;\
+    for i in {1..5}; do curl -LsS "https://awscli.amazonaws.com/awscli-exe-linux-${ARCHITECTURE}.zip" -o /tmp/awscli.zip && break || sleep 15; done ;\
+    mkdir -p /usr/local/awscli ;\
+    unzip -q /tmp/awscli.zip -d /usr/local/awscli ;\
+    /usr/local/awscli/aws/install
+
+COPY root/dbxcli.sh /tmp/dbxcli.sh
+RUN /tmp/dbxcli.sh
+
+
 # Set PATH for Go
 #ENV PATH="/usr/local/go/bin:$PATH"
 
-# Default command
-CMD ["/bin/bash"]
+WORKDIR /workspace
+CMD ["/bin/zsh"]
