@@ -66,7 +66,7 @@ RUN if [ "${TARGETARCH}" = "amd64" ]; then ARCHITECTURE=x86_64; elif [ "${TARGET
 
 RUN wget --progress=dot:giga https://github.com/robbyrussell/oh-my-zsh/raw/master/tools/install.sh -O - | zsh || true
 
-RUN mkdir -p /root/.ssh/ /root/.local/bin /root/profile.d
+RUN mkdir -p /root/.ssh/ /root/utils /root/profile
 COPY root/.zshrc /root/.zshrc
 COPY root/dbxcli.sh /tmp/dbxcli.sh
 RUN /tmp/dbxcli.sh

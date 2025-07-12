@@ -13,4 +13,4 @@ alias la='ls --color=never -la'
 # IP addresses
 alias myipip="dig +short myip.opendns.com @resolver1.opendns.com"
 
-export PATH=$PATH:/usr/local/bin:/root/.local/bin:/root/profile.d
+export PATH=$PATH:/usr/local/bin:/root/utils:/root/profile
