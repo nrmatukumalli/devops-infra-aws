@@ -22,8 +22,9 @@ RUN dnf update -y && \
 
 # Install Python libraries
 RUN python3.12 -m venv /root/venv
-RUN /root/venv/bin/pip3 install --upgrade pip && \
-    /root/venv/bin/pip3 install boto3 requests ansible
+RUN /root/venv/bin/pip3 install --no-cache-dir --upgrade pip && \
+    /root/venv/bin/pip3 install --no-cache-dir --upgrade pip setuptools && \
+    /root/venv/bin/pip3 install --no-cache-dir boto3 requests ansible
 
 # Install hcl2json
 RUN go install github.com/tmccombs/hcl2json@latest && \
