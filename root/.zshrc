@@ -13,4 +13,7 @@ alias la='ls --color=never -la'
 # IP addresses
 alias myipip="dig +short myip.opendns.com @resolver1.opendns.com"
 
+cp /root/profile/ZscalerCA.pem /etc/pki/ca-trust/source/anchors
+update-ca-trust
+
 export PATH=$PATH:/usr/local/bin:/root/utils:/root/profile
